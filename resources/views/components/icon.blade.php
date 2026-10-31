@@ -1,0 +1,52 @@
+@props(['name', 'class' => 'w-5 h-5'])
+
+@php
+$paths = [
+    'cart' => '<circle cx="9" cy="20" r="1.25"/><circle cx="17" cy="20" r="1.25"/><path d="M3 4h2l2.2 11.2a1.5 1.5 0 0 0 1.5 1.3h8.6a1.5 1.5 0 0 0 1.5-1.2L19 8H6"/>',
+    'banknote' => '<rect x="3" y="6.5" width="18" height="11" rx="1.5"/><circle cx="12" cy="12" r="2.25"/><path d="M6.5 6.5v0M17.5 17.5v0"/>',
+    'chart-bar' => '<path d="M4 20V10M10 20V4M16 20v-7M4 20h16"/>',
+    'box' => '<path d="M3.5 8.2 12 4l8.5 4.2v8.1L12 20.5l-8.5-4.2z"/><path d="M3.5 8.2 12 12m0 0 8.5-3.8M12 12v8.5"/>',
+    'inbox-down' => '<path d="M4 12V6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5V12"/><path d="M4 12h4.2a1 1 0 0 1 .9.55l.7 1.4a1 1 0 0 0 .9.55h2.6a1 1 0 0 0 .9-.55l.7-1.4a1 1 0 0 1 .9-.55H20"/><path d="M4 12v5.5A1.5 1.5 0 0 0 5.5 19h13a1.5 1.5 0 0 0 1.5-1.5V12"/>',
+    'tag' => '<path d="M11.5 4h-5A1.5 1.5 0 0 0 5 5.5v5c0 .4.16.78.44 1.06l8 8a1.5 1.5 0 0 0 2.12 0l5-5a1.5 1.5 0 0 0 0-2.12l-8-8A1.5 1.5 0 0 0 11.5 4Z"/><circle cx="9" cy="9" r="1.25"/>',
+    'users' => '<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19c.6-3 2.7-4.5 5.5-4.5s4.9 1.5 5.5 4.5"/><circle cx="17" cy="9.5" r="2.25"/><path d="M15.5 14.5c2 .2 3.4 1.5 3.9 3.8"/>',
+    'user-circle' => '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="10" r="2.6"/><path d="M6.3 18.2c.9-2.4 2.9-3.7 5.7-3.7s4.8 1.3 5.7 3.7"/>',
+    'logout' => '<path d="M9 4H6.5A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20H9"/><path d="M14 16l4-4-4-4"/><path d="M18 12H9"/>',
+    'alert-triangle' => '<path d="M12 4.5 21 19.5H3z"/><path d="M12 10v3.5"/><circle cx="12" cy="16.5" r=".9" fill="currentColor" stroke="none"/>',
+    'trending-up' => '<path d="M4 16l5-5 3.5 3.5L20 7"/><path d="M14.5 7H20v5.5"/>',
+    'clock' => '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    'check-circle' => '<circle cx="12" cy="12" r="8.5"/><path d="M8 12.3l2.4 2.4L16.2 9"/>',
+    'chevron-down' => '<path d="M5.5 8.5 12 15l6.5-6.5"/>',
+    'menu' => '<path d="M4 7h16M4 12h16M4 17h16"/>',
+    'pie' => '<path d="M12 3.5v8.5h8.5A8.5 8.5 0 0 0 12 3.5Z"/><path d="M20.3 15A8.5 8.5 0 1 1 12 3.7"/>',
+    'search' => '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/>',
+    'x' => '<path d="M6 6l12 12M18 6L6 18"/>',
+    'calendar' => '<rect x="4" y="5.5" width="16" height="14" rx="1.5"/><path d="M8 3.5v3.5M16 3.5v3.5M4 10h16"/>',
+    'download' => '<path d="M12 4v11"/><path d="M7.5 11.5 12 16l4.5-4.5"/><path d="M5 19.5h14"/>',
+    'plus' => '<path d="M12 5v14M5 12h14"/>',
+    'check' => '<path d="M5 12.5l4.5 4.5L19 7"/>',
+    'key' => '<circle cx="8" cy="15" r="3.5"/><path d="M10.5 12.5 18 5m0 0h-3.5M18 5v3.5"/>',
+    'lock' => '<rect x="5" y="10.5" width="14" height="9" rx="1.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>',
+    'edit' => '<path d="M16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1 1-4Z"/><path d="M14.5 6.5l3 3"/>',
+    'trash' => '<path d="M5 7h14"/><path d="M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2"/><path d="M7 7l.8 12a1.5 1.5 0 0 0 1.5 1.4h5.4a1.5 1.5 0 0 0 1.5-1.4L17 7"/><path d="M10 11v6M14 11v6"/>',
+    'arrow-left' => '<path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/>',
+    'trending-down' => '<path d="M4 8l5 5 3.5-3.5L20 17"/><path d="M14.5 17H20v-5.5"/>',
+    'crown' => '<path d="M4 17.5h16"/><path d="M4.5 17 3 8l4.8 3.3L12 6l4.2 5.3L21 8l-1.5 9Z"/>',
+    'truck' => '<path d="M3 7.5h10v9H3z"/><path d="M13 10.5h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>',
+    'bell' => '<path d="M6 10a6 6 0 0 1 12 0c0 3.2 1 5 2 6.5H4c1-1.5 2-3.3 2-6.5Z"/><path d="M9.5 19.5a2.5 2.5 0 0 0 5 0"/>',
+    'package-x' => '<path d="M3.5 8.2 12 4l8.5 4.2v8.1L12 20.5l-8.5-4.2z"/><path d="M3.5 8.2 12 12v8.5M12 12l8.5-3.8"/><path d="M9.5 9.5l3 3m0-3-3 3" stroke="#dc2626"/>',
+    'leaf' => '<path d="M5 19c8.5 0 14-5.5 14-14 0-.5 0-1-.05-1.45C10 4 5 9 5 17c0 .7.05 1.4.15 2Z"/><path d="M5 19c0-4.5 2.2-8 6.5-10.5"/>',
+    'apple' => '<path d="M12 8.2c-1-1.4-2.6-2-4.3-1.6C5.4 7 4 9 4 11.5 4 15.5 7.8 20 10.6 20c.6 0 1-.15 1.4-.4.4.25.8.4 1.4.4C16.2 20 20 15.5 20 11.5c0-2.5-1.4-4.5-3.7-4.9-1.7-.4-3.3.2-4.3 1.6Z"/><path d="M12 8.2V5.5c0-1 .6-1.8 1.5-2.2"/>',
+    'carrot' => '<path d="M10.5 13.5 4 20"/><path d="M12.7 4.3c3 0 6 3 6 6 0 4.3-6 9.7-8.9 9.7-1.2 0-1.8-.6-1.8-1.8 0-2.9 5.4-8.9 9.7-8.9-1-1.6-2.6-2.6-5-3Z"/><path d="M13 4.2 12 2.5M15.3 5 16 3M16.7 7.5l2-.7"/>',
+    'ban' => '<circle cx="12" cy="12" r="8.5"/><path d="M6.2 6.2l11.6 11.6"/>',
+    'printer' => '<path d="M6 8.5V5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 18 5v3.5"/><rect x="4" y="8.5" width="16" height="7" rx="1.5"/><rect x="7" y="14" width="10" height="6.5" rx="1"/><path d="M7.5 11.5h1.5"/>',
+    'file-spreadsheet' => '<path d="M6 3.5h8L18 7.5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z"/><path d="M14 3.5V8h4"/><path d="M8 13h8M8 16.5h8M8 13v6.5M12 13v6.5M16 13v6.5"/>',
+    'whatsapp' => '<path d="M4 20l1.3-4A8 8 0 1 1 8.5 19L4 20Z"/><path d="M8.7 8.7c.3-.6 1.5-.5 1.8.1.3.6.5 1.1.2 1.6-.3.5-.7.5-.4 1s.9 1.2 1.5 1.5.7 0 1-.3.9-.6 1.5-.3 1.4.9 1.4 1.4-.6 1.3-1.1 1.4c-.9.2-2.2-.1-3.6-1.5s-1.8-2.6-1.6-3.5c.1-.5.1-.9.3-1.4Z" fill="currentColor" stroke="none"/>',
+    'sun' => '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M5 5l1.4 1.4M17.6 17.6 19 19M3 12h2M19 12h2M5 19l1.4-1.4M17.6 6.4 19 5"/>',
+    'moon' => '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>',
+    'spinner' => '<path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5" stroke-linecap="round"/>',
+];
+@endphp
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="{{ $class }}">
+    {!! $paths[$name] ?? '' !!}
+</svg>

@@ -1,0 +1,73 @@
+# Despliegue en Render (plan gratis). La base de datos y las fotos viven en Supabase.
+# Las variables marcadas "sync: false" se escriben en el panel de Render (nunca en el repositorio).
+services:
+  - type: web
+    name: primos-ramirez
+    runtime: docker
+    plan: free
+    healthCheckPath: /up
+    envVars:
+      - key: APP_NAME
+        value: Los Primos Ramírez
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_URL
+        sync: false            # https://TU-SERVICIO.onrender.com
+      - key: APP_KEY
+        sync: false            # php artisan key:generate --show
+      - key: APP_LOCALE
+        value: es
+      - key: APP_FALLBACK_LOCALE
+        value: es
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: warning
+      # Base de datos (Supabase, "Session pooler")
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        value: postgres
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      # Sesiones / caché / colas en la base de datos
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      # Fotos en Supabase Storage (compatible con S3)
+      - key: MEDIA_DISK
+        value: s3
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_DEFAULT_REGION
+        sync: false
+      - key: AWS_BUCKET
+        value: fotos
+      - key: AWS_ENDPOINT
+        sync: false            # https://TU-PROYECTO.supabase.co/storage/v1/s3
+      - key: AWS_URL
+        sync: false            # https://TU-PROYECTO.supabase.co/storage/v1/object/public/fotos
+      - key: AWS_USE_PATH_STYLE_ENDPOINT
+        value: "true"
+      # Primer usuario Dueño (solo se usa si no existe ninguno)
+      - key: ADMIN_NAME
+        value: Administrador
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

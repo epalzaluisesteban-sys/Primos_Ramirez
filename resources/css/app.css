@@ -1,0 +1,27 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+/* Modo oscuro por clase (.dark en <html>), controlado por el interruptor del navbar
+   en vez de solo prefers-color-scheme, para que la preferencia del usuario persista. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Colores corporativos: la misma paleta "verdulería" (verde-naranja-rojo) ya usada
+       en la franja superior y en las tarjetas, nombrada para reutilizar en componentes
+       nuevos (toast, modal, loader) sin repetir valores hex sueltos. */
+    --color-brand-primary: #15803d;
+    --color-brand-primary-dark: #16a34a;
+    --color-brand-secondary: #f97316;
+    --color-brand-danger: #dc2626;
+    --color-brand-info: #2563eb;
+}
