@@ -23,7 +23,7 @@ return [
 
     /*
     | Disco donde quedan los respaldos (App\Services\RespaldoService).
-    | 'local' en la PC; 'respaldos' en Render, porque allá el disco del servidor se borra en cada reinicio.
+    | 'local' en la PC; 'respaldos' en producción, porque allá el disco del servidor se borra en cada reinicio.
     */
     'respaldos_disk' => env('RESPALDOS_DISK', 'local'),
 

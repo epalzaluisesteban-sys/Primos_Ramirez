@@ -250,7 +250,7 @@ class RespaldoTest extends TestCase
         }
     }
 
-    // En Render el disco del servidor se borra al reiniciar: los respaldos van al bucket privado de Supabase
+    // En producción el disco del servidor se borra al reiniciar: los respaldos van al bucket privado de Supabase
     // y los archivos subidos para restaurar se quedan en el disco local hasta confirmar.
     public function test_en_produccion_los_respaldos_se_guardan_en_el_bucket_privado(): void
     {

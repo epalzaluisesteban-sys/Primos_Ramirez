@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * Archivos subidos (fotos de productos, clientes, personal y categorías).
- * En local se guardan en storage/app/public; en producción (Render) el disco es temporal,
+ * En local se guardan en storage/app/public; en producción (Back4app) el disco es temporal,
  * así que MEDIA_DISK=s3 los envía al almacenamiento de Supabase.
  */
 class Almacen

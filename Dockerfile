@@ -40,4 +40,6 @@ RUN chmod +x /usr/local/bin/entrypoint.sh \
     && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
 
+# Back4app enruta a este puerto (ver docker/entrypoint.sh)
+EXPOSE 80
 ENTRYPOINT ["entrypoint.sh"]

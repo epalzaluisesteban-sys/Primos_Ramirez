@@ -13,7 +13,8 @@ php artisan serve                # http://127.0.0.1:8000  (o preview "laravel" d
 php artisan test                 # SQLite en memoria (phpunit.xml)
 ```
 
-- Producción: Render + Supabase (PostgreSQL y almacenamiento S3). Ver `DESPLIEGUE.md` y `render.yaml`.
+- Producción: Back4app Containers (con el `Dockerfile`) + Supabase (PostgreSQL y almacenamiento S3). Ver `DESPLIEGUE.md`.
+  El puerto, los procesos de Apache y la memoria de PHP se ajustan por variables en `docker/entrypoint.sh`.
 - `App\Support\SqlFecha` solo genera SQL para **MySQL y PostgreSQL**: el Dashboard, Reportes y Estadísticas
   no funcionan en SQLite, así que las pruebas no deben renderizar esas pantallas.
 

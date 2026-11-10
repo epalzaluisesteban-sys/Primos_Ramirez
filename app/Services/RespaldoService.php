@@ -25,7 +25,7 @@ use Throwable;
  *   registros   cantidad de filas por tabla (para comprobar que el archivo está completo)
  *   columnas    columnas de cada tabla al momento del respaldo
  *   tablas      las filas de cada tabla, sin depender del motor: un respaldo de MySQL (local)
- *               se puede restaurar en PostgreSQL (Render/Supabase) y al revés
+ *               se puede restaurar en PostgreSQL (Supabase) y al revés
  *   fotos       al final, las fotos que usan los registros, convertidas a texto (base64)
  *
  * También se restauran los respaldos .tar.gz del formato 1 (los primeros que generó el sistema).
