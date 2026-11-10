@@ -34,3 +34,4 @@ Más detalles de los módulos en [MEJORAS.md](MEJORAS.md).
 - Saldo del cliente = ventas a crédito (no anuladas) − abonos. Si tiene límite de crédito, no se permite superarlo.
 - Costo de producto = promedio ponderado de sus compras (`Compra::costosPromedio()`).
 "# Primos_Ramirez" 
+"# Primos_Ramirez" 
