@@ -33,3 +33,4 @@ Más detalles de los módulos en [MEJORAS.md](MEJORAS.md).
   Las ventas a crédito no ingresan efectivo hasta que el cliente abona.
 - Saldo del cliente = ventas a crédito (no anuladas) − abonos. Si tiene límite de crédito, no se permite superarlo.
 - Costo de producto = promedio ponderado de sus compras (`Compra::costosPromedio()`).
+"# Primos_Ramirez" 
