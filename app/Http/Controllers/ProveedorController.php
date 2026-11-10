@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Proveedor;
+use App\Support\Contacto;
 use Illuminate\Http\Request;
 
 class ProveedorController extends Controller
@@ -18,24 +19,30 @@ class ProveedorController extends Controller
         return view('proveedores.create');
     }
 
-    private function validacionProveedor(): array
+    // Quita guiones/espacios de los teléfonos y valida: solo números, 11 dígitos empezando por 0.
+    private function validarProveedor(Request $request, array $extra = []): array
     {
-        return [
+        $request->merge([
+            'telefono' => Contacto::limpiarTelefono($request->input('telefono')),
+            'whatsapp' => Contacto::limpiarTelefono($request->input('whatsapp')),
+        ]);
+
+        return $request->validate([
             'nombre' => 'required|string|max:255',
             'contacto' => 'nullable|string|max:255',
-            'telefono' => 'nullable|string|max:50',
-            'whatsapp' => 'nullable|string|max:50',
+            'telefono' => Contacto::REGLA_TELEFONO,
+            'whatsapp' => Contacto::REGLA_TELEFONO,
             'email' => 'nullable|email|max:255',
             'direccion' => 'nullable|string|max:500',
             'notas' => 'nullable|string|max:500',
-        ];
+        ] + $extra);
     }
 
     public function store(Request $request)
     {
-        $request->validate($this->validacionProveedor());
+        $datos = $this->validarProveedor($request);
 
-        Proveedor::create($request->all());
+        Proveedor::create($datos);
 
         return redirect()->route('proveedores.index')->with('success', 'Proveedor registrado exitosamente.');
     }
@@ -47,7 +54,7 @@ class ProveedorController extends Controller
 
     public function update(Request $request, Proveedor $proveedor)
     {
-        $request->validate($this->validacionProveedor() + [
+        $this->validarProveedor($request, [
             'activo' => 'nullable|boolean',
         ]);
 
@@ -73,6 +80,19 @@ class ProveedorController extends Controller
 
         $proveedor->delete();
         return redirect()->route('proveedores.index')->with('success', 'Proveedor eliminado.');
+    }
+
+    /**
+     * Activa o desactiva un proveedor desde la tabla. Es la forma de "quitarlo" cuando
+     * ya tiene compras (no se puede borrar): deja de aparecer para compras nuevas.
+     */
+    public function alternarActivo(Proveedor $proveedor)
+    {
+        $proveedor->update(['activo' => !$proveedor->activo]);
+
+        return back()->with('success', $proveedor->activo
+            ? "{$proveedor->nombre} vuelve a estar disponible para compras."
+            : "{$proveedor->nombre} quedó inactivo: no aparecerá en compras nuevas. Su historial se conserva.");
     }
 
     // Muestra la ficha del proveedor con su historial de compras

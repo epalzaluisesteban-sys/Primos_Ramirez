@@ -30,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
         Blade::directive('usd', fn ($e) => "<?php echo \App\Support\Moneda::usd({$e}); ?>");
         Blade::directive('ves', fn ($e) => "<?php echo \App\Support\Moneda::ves({$e}); ?>");
         Blade::directive('bs', fn ($e) => "<?php echo \App\Support\Moneda::usdEnVes({$e}); ?>");
+        // @cantidad($x) -> 3.000 se muestra "3", 2.500 se muestra "2.5" (sin ceros de sobra)
+        Blade::directive('cantidad', fn ($e) => "<?php echo \App\Support\Cantidad::formato({$e}); ?>");
 
         if (app()->environment('production')) {
             URL::forceScheme('https');
@@ -46,6 +48,11 @@ class AppServiceProvider extends ServiceProvider
 
             $notificaciones = collect();
 
+            // Los avisos de productos llevan al filtro correspondiente de Productos (donde están las alertas).
+            // El Obrero no entra a Productos: a él se le muestran como información, sin enlace.
+            $veProductos = auth()->user()->esEncargadoOSuperior();
+            $urlFiltro = fn (string $filtro) => $veProductos ? route('productos.index', ['filtro' => $filtro]) : null;
+
             $agotados = Producto::agotados()->get();
             foreach ($agotados->take(5) as $prod) {
                 $notificaciones->push([
@@ -53,7 +60,7 @@ class AppServiceProvider extends ServiceProvider
                     'icono' => 'ban',
                     'color' => 'rose',
                     'texto' => "Producto agotado: {$prod->nombre}",
-                    'url' => route('productos.index'),
+                    'url' => $urlFiltro('agotados'),
                 ]);
             }
 
@@ -63,14 +70,15 @@ class AppServiceProvider extends ServiceProvider
                     'tipo' => 'stock',
                     'icono' => 'alert-triangle',
                     'color' => 'rose',
-                    'texto' => "Quedan {$prod->stock} {$prod->unidadLabel()} de {$prod->nombre}",
-                    'url' => route('productos.index'),
+                    'texto' => 'Quedan ' . \App\Support\Cantidad::formato($prod->stock) . " {$prod->unidadLabel()} de {$prod->nombre}",
+                    'url' => $urlFiltro('stock_bajo'),
                 ]);
             }
 
             if (auth()->user()->esEncargadoOSuperior()) {
-                $porVencer = Producto::whereNotNull('fecha_vencimiento')
-                    ->whereDate('fecha_vencimiento', '<=', now()->addDays(5))
+                $porVencer = Producto::activos()->whereNotNull('fecha_vencimiento')
+                    ->whereDate('fecha_vencimiento', '<=', now()->addDays(\App\Services\AlertasInventarioService::DIAS_AVISO_VENCIMIENTO))
+                    ->orderBy('fecha_vencimiento')
                     ->get();
                 foreach ($porVencer->take(5) as $prod) {
                     $dias = $prod->diasParaVencer();
@@ -82,7 +90,7 @@ class AppServiceProvider extends ServiceProvider
                         'icono' => 'clock',
                         'color' => 'amber',
                         'texto' => $texto,
-                        'url' => route('productos.index'),
+                        'url' => $urlFiltro('vencimiento'),
                     ]);
                 }
 

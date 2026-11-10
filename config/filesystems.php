@@ -36,19 +36,25 @@ return [
 
     'disks' => [
 
+        // Disco privado: la app no entrega nada de aquí por URL. Con 'serve' en true su ruta ocupaba /storage/...
+        // y respondía 403 a las fotos cuando faltaba el enlace public/storage.
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
 
+        // Fotos (productos, clientes, personal, categorías). Normalmente el servidor las entrega por el enlace
+        // public/storage (php artisan storage:link). Si el enlace falta —pasa al copiar el proyecto a otra
+        // computadora en Windows— 'serve' hace que Laravel las entregue igual por /storage/{ruta}.
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
+            'serve' => true,
             'throw' => false,
             'report' => false,
         ],

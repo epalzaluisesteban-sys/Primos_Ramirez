@@ -3,19 +3,33 @@
 namespace App\Http\Controllers;
 
 use App\Support\Almacen;
+use App\Models\AjusteInventario;
 use App\Models\Producto;
 use App\Models\Categoria;
+use App\Services\AlertasInventarioService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductoController extends Controller
 {
-    public function index()
+    /**
+     * Listado con filtros (?filtro=agotados, stock_bajo, vencimiento, comprar, alertas, inactivos).
+     * Aquí viven las alertas de stock; la campana enlaza directo a cada filtro.
+     */
+    public function index(Request $request, AlertasInventarioService $alertas)
     {
-        $productos = Producto::with('categoria')->latest()->get();
-        return view('productos.index', compact('productos'));
+        $filtro = AlertasInventarioService::filtroValido($request->query('filtro'));
+        $grupos = $alertas->clasificar(Producto::with('categoria')->latest()->get());
+
+        $productos = $grupos[$filtro];
+        $conteos = array_map(fn ($g) => $g->count(), $grupos);
+        // Para el botón "Comprar" en cada fila
+        $idsComprar = $grupos['comprar']->pluck('id')->flip();
+
+        return view('productos.index', compact('productos', 'filtro', 'conteos', 'idsComprar'));
     }
 
     public function create()
@@ -37,23 +51,43 @@ class ProductoController extends Controller
             'unidad_medida' => 'required|in:' . implode(',', array_keys(Producto::UNIDADES)),
             'precio' => 'required|numeric|min:0',
             'precio_compra' => 'nullable|numeric|min:0',
-            'stock' => 'required|numeric|min:0',
-            'stock_minimo' => 'required|numeric|min:0',
-            'stock_maximo' => 'nullable|numeric|min:0|gte:stock_minimo',
+            'stock' => ['required', 'numeric', 'min:0', $this->sinDecimalesSiEsPorUnidad()],
+            'stock_minimo' => ['required', 'numeric', 'min:0', $this->sinDecimalesSiEsPorUnidad()],
+            'stock_maximo' => ['nullable', 'numeric', 'min:0', 'gte:stock_minimo', $this->sinDecimalesSiEsPorUnidad()],
             'fecha_vencimiento' => 'nullable|date',
         ];
     }
+
+    // Productos por unidad, caja, atado o saco: las existencias van sin decimales.
+    private function sinDecimalesSiEsPorUnidad(): \Closure
+    {
+        return function (string $atributo, $valor, \Closure $falla) {
+            if (Producto::unidadEsEntera(request('unidad_medida')) && is_numeric($valor) && !Producto::esEntero($valor)) {
+                $falla('La :attribute va sin decimales porque el producto se cuenta por ' . mb_strtolower(Producto::UNIDADES[request('unidad_medida')]) . '.');
+            }
+        };
+    }
+
+    // Campos que se guardan directo desde el formulario. El stock NO está aquí:
+    // cualquier cambio de existencia pasa por AjusteInventario para que quede en el kardex.
+    private const CAMPOS = [
+        'categoria_id', 'nombre', 'marca', 'ubicacion', 'codigo_barras', 'codigo_qr', 'unidad_medida',
+        'precio', 'precio_compra', 'stock_minimo', 'stock_maximo', 'fecha_vencimiento',
+    ];
 
     public function store(Request $request)
     {
         $request->validate($this->validacionProducto());
 
-        $datos = $request->except('foto');
+        $datos = $request->only(self::CAMPOS) + ['stock' => 0, 'activo' => true];
         if ($request->hasFile('foto')) {
             $datos['foto'] = Almacen::guardar($request->file('foto'), 'productos');
         }
 
-        Producto::create($datos);
+        DB::transaction(function () use ($datos, $request) {
+            $producto = Producto::create($datos);
+            AjusteInventario::registrar($producto, (float) $request->stock, 'Inventario inicial', auth()->id());
+        });
 
         return redirect()->route('productos.index')->with('success', 'Producto creado exitosamente.');
     }
@@ -66,9 +100,12 @@ class ProductoController extends Controller
 
     public function update(Request $request, Producto $producto)
     {
-        $request->validate($this->validacionProducto());
+        $request->validate($this->validacionProducto() + [
+            'motivo_ajuste' => 'nullable|string|max:255',
+            'activo' => 'nullable|boolean',
+        ]);
 
-        $datos = $request->except('foto');
+        $datos = $request->only(self::CAMPOS) + ['activo' => $request->boolean('activo')];
         if ($request->hasFile('foto')) {
             if ($producto->foto) {
                 Almacen::borrar($producto->foto);
@@ -76,13 +113,28 @@ class ProductoController extends Controller
             $datos['foto'] = Almacen::guardar($request->file('foto'), 'productos');
         }
 
-        $producto->update($datos);
+        DB::transaction(function () use ($producto, $datos, $request) {
+            // Se relee con bloqueo: si hubo una venta mientras se editaba, el ajuste se calcula
+            // contra el stock real del momento y el kardex sigue cuadrando.
+            $actual = Producto::lockForUpdate()->findOrFail($producto->id);
+            $actual->update($datos);
+            AjusteInventario::registrar(
+                $actual,
+                (float) $request->stock,
+                $request->filled('motivo_ajuste') ? $request->motivo_ajuste : 'Corrección manual de existencia',
+                auth()->id()
+            );
+        });
 
         return redirect()->route('productos.index')->with('success', 'Producto actualizado correctamente.');
     }
 
     public function destroy(Producto $producto)
     {
+        if ($producto->tieneHistorial()) {
+            return back()->withErrors(['error' => "No se puede eliminar {$producto->nombre}: tiene compras, ventas o pérdidas registradas. Desactívalo desde Editar para que no aparezca en ventas ni compras."]);
+        }
+
         if ($producto->foto) {
             Almacen::borrar($producto->foto);
         }
@@ -230,9 +282,21 @@ class ProductoController extends Controller
             ];
         });
 
-        // 4. Unir todos los movimientos y ordenar cronológicamente (más antiguo primero)
+        // 4. Ajustes manuales (stock inicial, conteos físicos, correcciones)
+        $ajustes = $producto->ajustes()->with('usuario')->orderBy('fecha')->get()->map(function ($a) {
+            return [
+                'fecha' => $a->fecha,
+                'es_entrada' => $a->cantidad > 0,
+                'origen' => 'Ajuste',
+                'cantidad' => abs($a->cantidad),
+                'responsable' => $a->usuario->name ?? 'Sistema',
+                'observaciones' => 'Ajuste de inventario' . ($a->motivo ? " — {$a->motivo}" : ''),
+            ];
+        });
+
+        // 5. Unir todos los movimientos y ordenar cronológicamente (más antiguo primero)
         //    para poder calcular costo promedio ponderado y existencia corrida.
-        $movimientos = $entradas->concat($salidas)->concat($mermas)->sortBy('fecha')->values();
+        $movimientos = $entradas->concat($salidas)->concat($mermas)->concat($ajustes)->sortBy('fecha')->values();
 
         // Costo promedio ponderado: se recalcula únicamente con las Compras (misma
         // metodología que ReporteController), ya que las salidas no alteran el costo.
@@ -245,9 +309,12 @@ class ProductoController extends Controller
             $mov['costo_anterior'] = $costoActual;
 
             if ($mov['es_entrada']) {
-                $qtyCompras += $mov['cantidad'];
-                $valorCompras += $mov['cantidad'] * $mov['precio_compra'];
-                $costoActual = $qtyCompras > 0 ? $valorCompras / $qtyCompras : null;
+                // Solo las compras traen costo; un ajuste de entrada no cambia el costo promedio
+                if (isset($mov['precio_compra'])) {
+                    $qtyCompras += $mov['cantidad'];
+                    $valorCompras += $mov['cantidad'] * $mov['precio_compra'];
+                    $costoActual = $qtyCompras > 0 ? $valorCompras / $qtyCompras : null;
+                }
                 $existenciaCorrida += $mov['cantidad'];
             } else {
                 $existenciaCorrida -= $mov['cantidad'];
@@ -259,8 +326,8 @@ class ProductoController extends Controller
             return $mov;
         });
 
-        // La existencia corrida arranca en 0 y solo refleja movimientos registrados;
-        // si el stock actual difiere, se debe a ajustes manuales no registrados como movimiento.
+        // La existencia corrida arranca en 0 y refleja todos los movimientos registrados
+        // (incluidos los ajustes); si el stock actual difiere, algo lo cambió por fuera del sistema.
         $existenciaFinal = $existenciaCorrida;
         $discrepanciaStock = abs($existenciaFinal - (float) $producto->stock) > 0.0005;
 

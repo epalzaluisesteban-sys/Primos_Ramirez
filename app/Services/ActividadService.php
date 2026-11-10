@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Abono;
+use App\Models\AjusteInventario;
 use App\Models\CierreCaja;
 use App\Models\Compra;
 use App\Models\Merma;
@@ -78,6 +79,18 @@ class ActividadService
                 'color' => 'amber',
                 'texto' => 'Abono de ' . ($a->cliente->nombre ?? 'Cliente eliminado'),
                 'monto' => (float) $a->monto,
+                'usuario' => $a->usuario->name ?? 'Sistema',
+                'fecha' => $a->fecha,
+            ]);
+        }
+
+        foreach ($consulta(AjusteInventario::with(['usuario', 'producto'])) as $a) {
+            $eventos->push([
+                'tipo' => 'Ajuste',
+                'icono' => 'box',
+                'color' => 'stone',
+                'texto' => 'Ajuste de stock: ' . ($a->cantidad > 0 ? '+' : '') . $a->cantidad . ' ' . ($a->producto?->unidadLabel() ?? '') . ' de ' . ($a->producto->nombre ?? 'Producto eliminado') . ($a->motivo ? " ({$a->motivo})" : ''),
+                'monto' => null,
                 'usuario' => $a->usuario->name ?? 'Sistema',
                 'fecha' => $a->fecha,
             ]);

@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Support\Almacen;
 use App\Models\Abono;
+use App\Models\CierreCaja;
 use App\Models\Cliente;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\Contacto;
 use App\Support\Moneda;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ClienteController extends Controller
@@ -35,6 +38,7 @@ class ClienteController extends Controller
             ->get()
             ->map(function ($cliente) {
                 $cliente->saldo = $cliente->saldoPendiente();
+                $cliente->disponible = $cliente->creditoDisponible($cliente->saldo); // null = sin límite
                 return $cliente;
             });
     }
@@ -43,7 +47,7 @@ class ClienteController extends Controller
     {
         $clientes = $this->clientesConDatos();
         return $this->descargarCsv('clientes_' . now()->format('Y-m-d_His') . '.csv', function (callable $fila) use ($clientes) {
-            $fila(['Cliente', 'RIF', 'Teléfono', 'Dirección', 'Límite de Crédito', 'Última Compra', 'Total Comprado', 'Saldo Pendiente', 'Estado']);
+            $fila(['Cliente', 'RIF', 'Teléfono', 'Dirección', 'Límite de Crédito', 'Última Compra', 'Total Comprado', 'Saldo Pendiente', 'Crédito Disponible', 'Estado']);
 
             foreach ($clientes as $c) {
                 $fila([
@@ -55,6 +59,7 @@ class ClienteController extends Controller
                     $c->ventas_max_fecha ? \Carbon\Carbon::parse($c->ventas_max_fecha)->format('Y-m-d') : '',
                     number_format($c->ventas_sum_total ?? 0, 2, '.', ''),
                     number_format($c->saldo, 2, '.', ''),
+                    $c->disponible !== null ? number_format($c->disponible, 2, '.', '') : 'Sin límite',
                     $c->activo ? 'Activo' : 'Inactivo',
                 ]);
             }
@@ -71,24 +76,48 @@ class ClienteController extends Controller
         return $pdf->download('Clientes_' . now()->format('Y-m-d') . '.pdf');
     }
 
-    private function validacionCliente(): array
+    /**
+     * Limpia teléfono y cédula/RIF (quita guiones, puntos y espacios que la gente escribe)
+     * y los valida: el teléfono solo números (11 dígitos) y el documento tipo + solo números.
+     * Devuelve el teléfono y el documento ya listos para guardar.
+     */
+    private function validarCliente(Request $request, array $extra = []): array
     {
-        return [
+        $request->merge([
+            'telefono' => Contacto::limpiarTelefono($request->input('telefono')),
+            'documento_numero' => preg_replace('/[\s\.\-]/', '', (string) $request->input('documento_numero')) ?: null,
+        ]);
+
+        $request->validate([
             'nombre' => 'required|string|max:255',
             'foto' => 'nullable|image|max:2048',
-            'telefono' => 'nullable|string|max:50',
-            'rif' => 'nullable|string|max:20',
+            'telefono' => Contacto::REGLA_TELEFONO,
+            'documento_tipo' => ['nullable', 'required_with:documento_numero', Rule::in(Contacto::TIPOS_DOCUMENTO)],
+            'documento_numero' => [
+                'nullable',
+                'regex:/^\d{6,9}$/',
+                function ($atributo, $valor, $falla) use ($request) {
+                    if (in_array($request->input('documento_tipo'), ['J', 'G'], true) && strlen($valor) !== 9) {
+                        $falla('El RIF de una empresa (J o G) lleva 9 números, incluido el último dígito (ej. 12345678-9).');
+                    }
+                },
+            ],
             'direccion' => 'nullable|string|max:500',
             'limite_credito' => 'nullable|numeric|min:0',
             'notas' => 'nullable|string|max:500',
+        ] + $extra);
+
+        return [
+            'telefono' => $request->input('telefono'),
+            'rif' => Contacto::unirDocumento($request->input('documento_tipo'), $request->input('documento_numero')),
         ];
     }
 
     public function store(Request $request)
     {
-        $request->validate($this->validacionCliente());
+        $contacto = $this->validarCliente($request);
 
-        $datos = $request->except('foto');
+        $datos = $request->only(['nombre', 'direccion', 'limite_credito', 'notas']) + $contacto;
         if ($request->hasFile('foto')) {
             $datos['foto'] = Almacen::guardar($request->file('foto'), 'clientes');
         }
@@ -105,14 +134,14 @@ class ClienteController extends Controller
 
     public function update(Request $request, Cliente $cliente)
     {
-        $request->validate($this->validacionCliente() + [
+        $contacto = $this->validarCliente($request, [
             'activo' => 'nullable|boolean',
         ]);
 
         $datos = [
             'nombre' => $request->nombre,
-            'telefono' => $request->telefono,
-            'rif' => $request->rif,
+            'telefono' => $contacto['telefono'],
+            'rif' => $contacto['rif'],
             'direccion' => $request->direccion,
             'limite_credito' => $request->limite_credito,
             'notas' => $request->notas,
@@ -155,10 +184,14 @@ class ClienteController extends Controller
         }]);
 
         $saldo = $cliente->saldoPendiente();
+        $disponible = $cliente->creditoDisponible($saldo);
         $totalComprado = $cliente->totalComprado();
         $ultimaCompra = $cliente->ultimaCompra();
 
-        return view('clientes.show', compact('cliente', 'saldo', 'totalComprado', 'ultimaCompra'));
+        // Estado de la caja de hoy: los abonos solo se reciben con la caja abierta
+        $estadoCaja = CierreCaja::estaCerrada(now()) ? 'cerrada' : (CierreCaja::estaAbierta(now()) ? 'abierta' : 'sin_abrir');
+
+        return view('clientes.show', compact('cliente', 'saldo', 'disponible', 'totalComprado', 'ultimaCompra', 'estadoCaja'));
     }
 
     // Registrar un abono (pago) que reduce la deuda del cliente
@@ -169,6 +202,15 @@ class ClienteController extends Controller
             'moneda' => 'nullable|in:USD,VES',
             'notas' => 'nullable|string|max:500',
         ]);
+
+        // Un abono es efectivo que entra a la caja del día: después del cierre ya no saldría en el cuadre
+        if (CierreCaja::estaCerrada(now())) {
+            return back()->withErrors(['error' => 'La caja de hoy ya fue cerrada. Para recibir el abono, un encargado puede reabrirla en "Caja" (botón "Reabrir caja").'])->withInput();
+        }
+        // Y tiene que haber una caja abierta hoy, para que el abono entre en un cuadre con su fondo inicial
+        if (!CierreCaja::estaAbierta(now())) {
+            return back()->withErrors(['error' => 'Primero abre la caja del día (menú "Caja", botón "Abrir Caja del Día"). Después podrás registrar el abono.'])->withInput();
+        }
 
         $moneda = $request->moneda === 'VES' ? 'VES' : 'USD';
         $tasa = Moneda::tasa();

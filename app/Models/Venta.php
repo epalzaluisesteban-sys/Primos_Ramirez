@@ -23,12 +23,12 @@ class Venta extends Model
 
     /**
      * Una venta solo puede editarse o anularse si sigue "reciente"
-     * (fue registrada el mismo día) y aún no ha sido anulada.
-     * Esto evita alterar el historial de cierres de caja ya cerrados.
+     * (fue registrada el mismo día), aún no ha sido anulada y la caja
+     * de ese día no se ha cerrado (si no, el cuadre guardado quedaría mal).
      */
     public function puedeEditarse(): bool
     {
-        return !$this->anulada && $this->fecha->isToday();
+        return !$this->anulada && $this->fecha->isToday() && !CierreCaja::estaCerrada($this->fecha);
     }
 
     public function usuario(): BelongsTo

@@ -24,7 +24,7 @@
                 <tr>
                     <td>{{ $m->fecha->format('d/m/Y H:i') }}</td>
                     <td>{{ $m->producto->nombre ?? 'Eliminado' }}</td>
-                    <td style="text-align: center;">{{ $m->cantidad }}</td>
+                    <td style="text-align: center;">{{ \App\Support\Cantidad::formato($m->cantidad) }}</td>
                     <td>{{ $m->motivoLabel() }}</td>
                     <td>{{ $m->observacion ?: '—' }}</td>
                     <td style="text-align: right;">${{ number_format($m->valorEstimado(), 2) }}</td>

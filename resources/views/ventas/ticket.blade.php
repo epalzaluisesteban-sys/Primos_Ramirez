@@ -81,7 +81,7 @@
 </head>
 <body>
 
-    <button class="btn-imprimir" onclick="window.print()">🖨️ Imprimir Ticket</button>
+    <button class="btn-imprimir" onclick="window.print()">Imprimir ticket</button>
 
     <div class="center negrita">DISTRIBUIDORA</div>
     <div class="center negrita">"LOS PRIMOS RAMÍREZ"</div>
@@ -108,7 +108,7 @@
                     <td colspan="3">{{ $det->producto->nombre ?? 'Producto eliminado' }}</td>
                 </tr>
                 <tr>
-                    <td class="col-cant">x{{ $det->cantidad }}</td>
+                    <td class="col-cant">x{{ \App\Support\Cantidad::formato($det->cantidad) }}</td>
                     <td class="col-precio">${{ number_format($det->precio_unitario, 2) }}</td>
                     <td class="col-precio">${{ number_format($det->subtotal, 2) }}</td>
                 </tr>

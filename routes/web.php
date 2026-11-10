@@ -15,9 +15,9 @@ use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\MermaController;
 use App\Http\Controllers\EstadisticaController;
-use App\Http\Controllers\InventarioController;
 use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\TasaCambioController;
+use App\Http\Controllers\RespaldoController;
 
 // ==========================================
 // Rutas Públicas (Autenticación)
@@ -51,6 +51,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/perfil', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/perfil', [ProfileController::class, 'update'])->name('profile.update');
 
+    // Guía "Cómo usar": recorrido de práctica, solo lectura (no tiene formularios que envíen datos)
+    Route::view('/ayuda', 'ayuda.index')->name('ayuda.index');
+
 
     // --- Acceso Intermedio (Dueño y Encargado) ---
     Route::middleware(['role:Dueno,Encargado'])->group(function () {
@@ -71,12 +74,16 @@ Route::middleware(['auth'])->group(function () {
         Route::get('compras-exportar-excel', [CompraController::class, 'exportarExcel'])->name('compras.excel');
         Route::get('compras-exportar-pdf', [CompraController::class, 'exportarPDF'])->name('compras.pdf');
 
+        // Reabrir la caja de hoy si se cerró por error (queda anotado en sus observaciones)
+        Route::put('/caja/{caja}/reabrir', [CajaController::class, 'reabrir'])->name('caja.reabrir');
+
         // Edición y anulación de ventas recientes (mismo día, no anuladas)
         Route::get('ventas/{venta}/editar', [VentaController::class, 'edit'])->name('ventas.edit');
         Route::put('ventas/{venta}', [VentaController::class, 'update'])->name('ventas.update');
         Route::put('ventas/{venta}/anular', [VentaController::class, 'anular'])->name('ventas.anular');
 
         // Gestión de Proveedores
+        Route::patch('proveedores/{proveedor}/activo', [ProveedorController::class, 'alternarActivo'])->name('proveedores.activo');
         Route::resource('proveedores', ProveedorController::class)
             ->except(['destroy'])
             ->parameters(['proveedores' => 'proveedor']);
@@ -102,8 +109,8 @@ Route::middleware(['auth'])->group(function () {
         // Panel de Estadísticas Avanzado (tendencias, comparativos, predicción de demanda)
         Route::get('reportes/estadisticas', [EstadisticaController::class, 'index'])->name('estadisticas.index');
 
-        // Inventario Inteligente (alertas de stock, vencimiento y sugerencias de compra)
-        Route::get('inventario/alertas', [InventarioController::class, 'alertas'])->name('inventario.alertas');
+        // Las alertas de stock ahora son filtros de Productos; el enlace viejo lleva al filtro "Con alerta"
+        Route::get('inventario/alertas', fn () => redirect()->route('productos.index', ['filtro' => 'alertas']));
 
         // Tasa de cambio oficial del BCV (Bs. por USD)
         Route::get('tasa', [TasaCambioController::class, 'index'])->name('tasa.index');
@@ -127,7 +134,17 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('clientes/{cliente}', [ClienteController::class, 'destroy'])->name('clientes.destroy');
         
         // Gestión de Personal / Usuarios
+        Route::patch('usuarios/{usuario}/activo', [UserController::class, 'alternarActivo'])->name('usuarios.activo');
         Route::resource('usuarios', UserController::class)->only(['index', 'store', 'edit', 'update', 'destroy']);
+
+        // Respaldo y restauración de toda la información
+        Route::get('respaldos', [RespaldoController::class, 'index'])->name('respaldos.index');
+        Route::post('respaldos', [RespaldoController::class, 'store'])->name('respaldos.store');
+        Route::get('respaldos/{respaldo}/descargar', [RespaldoController::class, 'descargar'])->name('respaldos.descargar');
+        Route::delete('respaldos/{respaldo}', [RespaldoController::class, 'destroy'])->name('respaldos.destroy');
+        Route::post('respaldos/restaurar', [RespaldoController::class, 'preparar'])->name('respaldos.preparar');
+        Route::get('respaldos/restaurar/{pendiente}', [RespaldoController::class, 'confirmar'])->whereUuid('pendiente')->name('respaldos.confirmar');
+        Route::post('respaldos/restaurar/{pendiente}', [RespaldoController::class, 'restaurar'])->whereUuid('pendiente')->name('respaldos.restaurar');
     });
 
 });

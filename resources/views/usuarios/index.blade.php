@@ -1,155 +1,150 @@
 @extends('layouts.app')
 
-@section('title', 'Gestión de Personal')
+@section('title', 'Personal')
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="pagina">
 
-        <div class="mb-6">
-            <h2 class="font-display text-xl font-bold text-stone-900 flex items-center gap-2">
-                <x-icon name="users" class="w-5 h-5 text-violet-800" /> Control de Acceso y Personal
-            </h2>
-            <p class="text-sm text-stone-500 mt-0.5">Administra quién puede entrar al sistema y con qué permisos.</p>
-        </div>
+        <x-encabezado titulo="Personal" subtitulo="Quién puede entrar al sistema y qué puede hacer cada uno.">
+            <span class="insignia-violeta">{{ $usuarios->count() }} {{ $usuarios->count() === 1 ? 'usuario' : 'usuarios' }}</span>
+        </x-encabezado>
 
-        @if(session('success'))
-            <div class="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl mb-6 text-sm">
-                <x-icon name="check" class="w-4 h-4 text-emerald-600" /> {{ session('success') }}
-            </div>
-        @endif
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-        @if($errors->any())
-            <div class="flex items-center gap-2.5 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl mb-6 text-sm">
-                <x-icon name="alert-triangle" class="w-4 h-4 shrink-0 text-rose-500" /> {{ $errors->first() }}
-            </div>
-        @endif
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-            <!-- Formulario para Registrar Nuevo Trabajador -->
-            <div class="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 h-fit border-t-4 border-violet-700">
-                <h3 class="font-display text-base font-bold text-stone-800 mb-4">Registrar Nuevo Trabajador</h3>
+            <!-- Registrar trabajador -->
+            <div class="tarjeta">
+                <h3 class="titulo-tarjeta mb-4">Registrar trabajador</h3>
 
                 <form action="{{ route('usuarios.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                     @csrf
 
                     <div>
-                        <label class="block text-xs font-semibold text-stone-600 uppercase mb-1.5">Nombre Completo</label>
-                        <input type="text" name="name" value="{{ old('name') }}" required placeholder="Ej. Carlos Mendoza" class="w-full rounded-lg border-stone-300 border p-2.5 text-sm bg-white text-stone-800 placeholder-stone-400 focus:ring-violet-500 focus:border-violet-500">
+                        <label class="etiqueta" for="name">Nombre completo</label>
+                        <input id="name" type="text" name="name" value="{{ old('name') }}" required placeholder="Ej. Carlos Mendoza" class="campo @error('name') border-rose-500 @enderror">
+                        @error('name') <p class="error-campo">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold text-stone-600 uppercase mb-1.5">Correo Electrónico</label>
-                        <input type="email" name="email" value="{{ old('email') }}" required placeholder="usuario@empresa.com" class="w-full rounded-lg border-stone-300 border p-2.5 text-sm bg-white text-stone-800 placeholder-stone-400 focus:ring-violet-500 focus:border-violet-500">
+                        <label class="etiqueta" for="email">Correo electrónico</label>
+                        <input id="email" type="email" name="email" value="{{ old('email') }}" required placeholder="usuario@primosramirez.com" class="campo @error('email') border-rose-500 @enderror">
+                        <p class="ayuda-campo">Lo usará para iniciar sesión.</p>
+                        @error('email') <p class="error-campo">{{ $message }}</p> @enderror
                     </div>
+
+                    <x-campo-clave name="password" label="Contraseña inicial" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required minlength="8" />
+
+                    @include('usuarios._rol', ['seleccionado' => old('rol')])
 
                     <div>
-                        <label class="block text-xs font-semibold text-stone-600 uppercase mb-1.5">Contraseña Inicial</label>
-                        <input type="password" name="password" required placeholder="••••••••" class="w-full rounded-lg border-stone-300 border p-2.5 text-sm bg-white text-stone-800 placeholder-stone-400 focus:ring-violet-500 focus:border-violet-500">
+                        <label class="etiqueta" for="foto">Foto (Opcional)</label>
+                        <input id="foto" type="file" name="foto" accept="image/*" class="campo-archivo">
+                        <p class="ayuda-campo">JPG o PNG, máximo 2MB.</p>
+                        @error('foto') <p class="error-campo">{{ $message }}</p> @enderror
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-stone-600 uppercase mb-1.5">Rol / Permisos</label>
-                        <select name="rol" required class="w-full rounded-lg border-stone-300 border p-2.5 text-sm bg-white text-stone-800 placeholder-stone-400 focus:ring-violet-500 focus:border-violet-500">
-                            <option value="">-- Seleccionar Rol --</option>
-                            <option value="Obrero">Obrero (Solo Ventas)</option>
-                            <option value="Encargado">Encargado (Ventas, Inventario y Compras)</option>
-                            <option value="Dueno">Dueño (Acceso Total y Personal)</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-stone-600 uppercase mb-1.5">Foto (Opcional)</label>
-                        <input type="file" name="foto" accept="image/*" class="w-full text-sm text-stone-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-violet-50 file:text-violet-700 file:font-semibold hover:file:bg-violet-100">
-                    </div>
-
-                    <button type="submit" class="w-full flex items-center justify-center gap-2 bg-violet-800 hover:bg-violet-900 text-white font-semibold py-2.5 px-4 rounded-xl shadow-sm border border-stone-200 transition text-sm">
-                        <x-icon name="plus" class="w-4 h-4" /> Guardar Usuario
+                    <button type="submit" class="btn w-full bg-violet-800 hover:bg-violet-900 text-white">
+                        <x-icon name="plus" class="w-4 h-4" /> Guardar usuario
                     </button>
                 </form>
             </div>
 
-            <!-- Tabla de Usuarios Registrados -->
-            <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-stone-200 p-6">
-                <div class="flex justify-between items-center mb-4 border-b border-stone-200 pb-4">
-                    <h3 class="font-display text-base font-bold text-stone-800">Personal Autorizado en el Sistema</h3>
-                    <span class="bg-violet-100 text-violet-800 font-bold text-xs px-3 py-1.5 rounded-full">
-                        Total: {{ $usuarios->count() }} usuarios
-                    </span>
+            <!-- Personal registrado -->
+            <div class="tarjeta lg:col-span-2 p-0 overflow-hidden">
+                <div class="px-6 py-4 border-b border-stone-200 dark:border-stone-700">
+                    <h3 class="titulo-tarjeta">Personal registrado</h3>
                 </div>
 
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm text-stone-600">
-                        <thead class="text-stone-500 uppercase text-xs border-b border-stone-200">
+                    <table class="tabla">
+                        <thead>
                             <tr>
-                                <th class="py-3 px-4 font-semibold">Usuario</th>
-                                <th class="py-3 px-4 font-semibold">Correo</th>
-                                <th class="py-3 px-4 font-semibold text-center">Rol / Nivel</th>
-                                <th class="py-3 px-4 font-semibold text-center">Estado</th>
-                                <th class="py-3 px-4 font-semibold">Último Acceso</th>
-                                <th class="py-3 px-4 font-semibold text-center">Acciones</th>
+                                <th>Usuario</th>
+                                <th>Rol</th>
+                                <th class="text-center">Estado</th>
+                                <th>Último acceso</th>
+                                <th class="text-right">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-stone-100">
+                        <tbody>
                             @foreach($usuarios as $user)
-                                <tr class="hover:bg-stone-50">
-                                    <td class="py-3 px-4 font-bold text-stone-900">
-                                        <div class="flex items-center gap-2.5">
+                                @php
+                                    $esYo = $user->id === auth()->id();
+                                    $tieneHistorial = $conMovimientos->has($user->id);
+                                @endphp
+                                <tr class="{{ $user->activo ? '' : 'opacity-60' }}">
+                                    <td>
+                                        <div class="flex items-center gap-3">
                                             @if($user->fotoUrl())
-                                                <img src="{{ $user->fotoUrl() }}" alt="{{ $user->name }}" class="w-8 h-8 rounded-full object-cover border border-stone-200 shrink-0">
+                                                <img src="{{ $user->fotoUrl() }}" alt="{{ $user->name }}" class="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-stone-700 shrink-0">
                                             @else
-                                                <span class="w-8 h-8 rounded-full bg-violet-100 text-violet-800 font-bold text-xs flex items-center justify-center border border-stone-200 shrink-0">
+                                                <span class="w-9 h-9 rounded-full bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300 font-bold text-sm flex items-center justify-center shrink-0">
                                                     {{ strtoupper(substr($user->name, 0, 1)) }}
                                                 </span>
                                             @endif
-                                            <span>
-                                                {{ $user->name }}
-                                                @if($user->id === auth()->id())
-                                                    <span class="text-xs bg-emerald-100 text-emerald-800 font-normal px-2 py-0.5 rounded ml-1">(Tú)</span>
-                                                @endif
-                                            </span>
+                                            <div class="min-w-0">
+                                                <p class="font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                                                    {{ $user->name }}
+                                                    @if($esYo) <span class="insignia-verde py-0.5 px-2 text-[10px]">Tú</span> @endif
+                                                </p>
+                                                <p class="text-xs text-stone-500 dark:text-stone-400 truncate">{{ $user->email }}</p>
+                                            </div>
                                         </div>
                                     </td>
-                                    <td class="py-3 px-4 text-xs">{{ $user->email }}</td>
-                                    <td class="py-3 px-4 text-center" title="{{ implode(' · ', $user->permisosResumen()) }}">
+                                    <td title="{{ implode(' · ', $user->permisosResumen()) }}">
                                         @if($user->rol === 'Dueno')
-                                            <span class="inline-flex items-center gap-1 bg-violet-100 text-violet-800 font-extrabold text-xs px-2.5 py-1 rounded-full border border-violet-300">
-                                                <x-icon name="crown" class="w-3 h-3" /> Dueño
-                                            </span>
+                                            <span class="insignia-violeta"><x-icon name="crown" class="w-3 h-3" /> Dueño</span>
                                         @elseif($user->rol === 'Encargado')
-                                            <span class="bg-blue-100 text-blue-800 font-bold text-xs px-2.5 py-1 rounded-full border border-blue-300">
-                                                Encargado
-                                            </span>
+                                            <span class="insignia-azul">Encargado</span>
                                         @else
-                                            <span class="bg-stone-100 text-stone-800 font-semibold text-xs px-2.5 py-1 rounded-full border border-stone-300">
-                                                Obrero
-                                            </span>
+                                            <span class="insignia-gris">Obrero</span>
                                         @endif
-                                        <p class="text-[10px] text-stone-400 mt-1">{{ $user->nivelLabel() }}</p>
+                                        <p class="text-[10px] text-stone-400 dark:text-stone-500 mt-1">{{ $user->nivelLabel() }}</p>
                                     </td>
-                                    <td class="py-3 px-4 text-center">
+                                    <td class="text-center">
                                         @if($user->activo)
-                                            <span class="bg-emerald-100 text-emerald-800 font-bold text-xs px-2.5 py-1 rounded-full border border-emerald-300">Activo</span>
+                                            <span class="insignia-verde">Activo</span>
                                         @else
-                                            <span class="bg-rose-100 text-rose-800 font-bold text-xs px-2.5 py-1 rounded-full border border-rose-300">Inactivo</span>
+                                            <span class="insignia-roja">Sin acceso</span>
                                         @endif
                                     </td>
-                                    <td class="py-3 px-4 text-xs">{{ $user->ultimo_acceso ? $user->ultimo_acceso->diffForHumans() : 'Nunca' }}</td>
-                                    <td class="py-3 px-4 text-center">
-                                        <div class="flex justify-center items-center gap-2">
-                                            <a href="{{ route('usuarios.edit', $user->id) }}" class="p-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 transition inline-flex" title="Editar">
+                                    <td class="text-xs whitespace-nowrap">{{ $user->ultimo_acceso ? $user->ultimo_acceso->diffForHumans() : 'Nunca' }}</td>
+                                    <td>
+                                        <div class="flex justify-end items-center gap-2">
+                                            <a href="{{ route('usuarios.edit', $user->id) }}" class="btn-icono-ambar" title="Editar datos, rol o contraseña">
                                                 <x-icon name="edit" class="w-4 h-4" />
                                             </a>
-                                            @if($user->id !== auth()->id())
-                                                <form action="{{ route('usuarios.destroy', $user->id) }}" method="POST" data-confirm="¿Confirma que desea revocar el acceso a este usuario?" class="inline">
+
+                                            @if($esYo)
+                                                <span class="btn-icono-gris cursor-default opacity-60" title="No puedes quitarte el acceso a ti mismo">
+                                                    <x-icon name="lock" class="w-4 h-4" />
+                                                </span>
+                                            @elseif($tieneHistorial || !$user->activo)
+                                                {{-- Con movimientos no se puede borrar: se le quita o devuelve el acceso --}}
+                                                <form action="{{ route('usuarios.activo', $user->id) }}" method="POST" class="inline"
+                                                      @if($user->activo) data-confirm="¿Quitarle el acceso a {{ $user->name }}? No podrá iniciar sesión, pero sus ventas y movimientos se conservan." @endif>
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    @if($user->activo)
+                                                        <button type="submit" class="btn-icono-gris" title="Quitar acceso (se conserva su historial)">
+                                                            <x-icon name="ban" class="w-4 h-4" />
+                                                        </button>
+                                                    @else
+                                                        <button type="submit" class="btn-icono-verde" title="Devolver acceso">
+                                                            <x-icon name="check-circle" class="w-4 h-4" />
+                                                        </button>
+                                                    @endif
+                                                </form>
+                                            @endif
+
+                                            @if(!$esYo && !$tieneHistorial)
+                                                <form action="{{ route('usuarios.destroy', $user->id) }}" method="POST" class="inline"
+                                                      data-confirm="¿Eliminar a {{ $user->name }}? No tiene movimientos registrados, así que se borrará por completo.">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="p-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 transition inline-flex" title="Revocar acceso">
+                                                    <button type="submit" class="btn-icono-rojo" title="Eliminar (no tiene movimientos)">
                                                         <x-icon name="trash" class="w-4 h-4" />
                                                     </button>
                                                 </form>
-                                            @else
-                                                <span class="text-xs text-stone-500 italic">Protegido</span>
                                             @endif
                                         </div>
                                     </td>
@@ -158,6 +153,11 @@
                         </tbody>
                     </table>
                 </div>
+
+                <p class="px-6 py-3 border-t border-stone-200 dark:border-stone-700 text-[11px] text-stone-500 dark:text-stone-400 flex flex-wrap gap-x-4 gap-y-1">
+                    <span class="inline-flex items-center gap-1"><x-icon name="ban" class="w-3.5 h-3.5" /> Quitar acceso: para quien ya registró ventas u otros movimientos.</span>
+                    <span class="inline-flex items-center gap-1"><x-icon name="trash" class="w-3.5 h-3.5" /> Eliminar: solo si nunca registró nada.</span>
+                </p>
             </div>
 
         </div>

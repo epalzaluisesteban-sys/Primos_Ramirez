@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="12 12 96 96">
+  <circle cx="60" cy="60" r="48" fill="#ffffff"/>
+  <circle cx="60" cy="60" r="44" fill="none" stroke="#065f46" stroke-width="4"/>
+  <circle cx="60" cy="60" r="37" fill="none" stroke="#065f46" stroke-width="1.5"/>
+  <path d="M60 42C60 34 66 30 72 30C72 37 66 42 60 42Z" fill="#65a30d"/>
+  <text x="60" y="68" text-anchor="middle" font-size="24" font-weight="800" fill="#065f46" font-family="Arial, Helvetica, sans-serif" letter-spacing="1">LPR</text>
+  <circle cx="38" cy="82" r="3" fill="#f97316"/>
+  <circle cx="60" cy="86" r="3" fill="#f97316"/>
+  <circle cx="82" cy="82" r="3" fill="#f97316"/>
+</svg>

@@ -15,7 +15,7 @@ class CompraController extends Controller
     public function index()
     {
         $compras = Compra::with(['producto', 'usuario', 'proveedorRef'])->latest()->get();
-        $productos = Producto::all();
+        $productos = Producto::activos()->orderBy('nombre')->get();
         $proveedores = Proveedor::where('activo', true)->orderBy('nombre')->get();
 
         return view('compras.index', compact('compras', 'productos', 'proveedores'));
@@ -24,12 +24,17 @@ class CompraController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'producto_id' => 'required|exists:productos,id',
+            'producto_id' => ['required', \Illuminate\Validation\Rule::exists('productos', 'id')->where('activo', true)],
             'cantidad' => 'required|numeric|min:0.001',
             'precio_compra' => 'required|numeric|min:0.01',
             'proveedor_id' => 'nullable|exists:proveedores,id',
             'proveedor' => 'nullable|string|max:255',
         ]);
+
+        // Productos por unidad (unidad, caja, atado, saco) se reciben en cantidades enteras
+        if ($error = Producto::findOrFail($request->producto_id)->errorCantidad($request->cantidad)) {
+            return back()->withErrors(['cantidad' => $error])->withInput();
+        }
 
         DB::beginTransaction();
 

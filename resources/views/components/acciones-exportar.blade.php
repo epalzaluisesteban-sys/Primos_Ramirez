@@ -1,7 +1,7 @@
 @props(['excel' => null, 'pdf' => null, 'imprimir' => true])
 
 {{-- Grupo estándar de exportación: Excel, PDF e Imprimir. Se omite lo que no se pase. --}}
-<div class="inline-flex items-center rounded-xl border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 shadow-sm overflow-hidden divide-x divide-stone-300 dark:divide-stone-600 no-print">
+<div class="inline-flex items-center rounded-md border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 overflow-hidden divide-x divide-stone-300 dark:divide-stone-600 no-print">
     @if($excel)
         <a href="{{ $excel }}" class="flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-semibold text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 transition" title="Exportar a Excel">
             <x-icon name="file-spreadsheet" class="w-4 h-4 text-emerald-700 dark:text-emerald-400" /> Excel

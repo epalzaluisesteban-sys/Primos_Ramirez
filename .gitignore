@@ -23,5 +23,9 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
-# Archivos locales del asistente / editor
-/.claude
+# Archivos locales del asistente / editor (las skills del proyecto sí se comparten)
+/.claude/*
+!/.claude/skills/
+
+# Archivos temporales del servidor de lenguaje PHP del editor
+/storage/framework/lsp-*.php

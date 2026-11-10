@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CierreCaja;
 use App\Models\Venta;
 use App\Models\Producto;
 use App\Models\DetalleVenta;
@@ -27,15 +28,38 @@ class VentaController extends Controller
         return view('ventas.index', compact('ventas', 'totalPeriodo', 'totalPeriodoVes'));
     }
 
+    // Mensaje cuando la caja del día ya se cerró: lo que entre después no saldría en el cuadre.
+    private const CAJA_CERRADA = 'La caja de hoy ya fue cerrada. Si se cerró por error, un encargado puede reabrirla en "Caja" (botón "Reabrir caja") y después se registra la venta.';
+
+    // Mensaje cuando todavía no se abrió la caja del día: la venta no tendría cuadre.
+    private const CAJA_SIN_ABRIR = 'Primero abre la caja del día: escribe el fondo inicial y pulsa "Abrir Caja del Día". Después podrás registrar ventas.';
+
+    private const NO_EDITABLE = 'Solo se pueden editar o anular ventas del día, no anuladas, y mientras la caja de ese día siga abierta.';
+
     public function create()
     {
-        $productos = Producto::where('stock', '>', 0)->get();
+        if (CierreCaja::estaCerrada(now())) {
+            return redirect()->route('ventas.index')->withErrors(['error' => self::CAJA_CERRADA]);
+        }
+        if (!CierreCaja::estaAbierta(now())) {
+            // A la pantalla de caja, donde se abre (todos los roles pueden hacerlo)
+            return redirect()->route('caja.index')->withErrors(['error' => self::CAJA_SIN_ABRIR]);
+        }
+
+        $productos = Producto::activos()->where('stock', '>', 0)->orderBy('nombre')->get();
         $clientes = Cliente::where('activo', true)->orderBy('nombre')->get();
         return view('ventas.create', compact('productos', 'clientes'));
     }
 
     public function store(Request $request)
     {
+        if (CierreCaja::estaCerrada(now())) {
+            return back()->withErrors(['error' => self::CAJA_CERRADA])->withInput();
+        }
+        if (!CierreCaja::estaAbierta(now())) {
+            return redirect()->route('caja.index')->withErrors(['error' => self::CAJA_SIN_ABRIR]);
+        }
+
         $this->validarVenta($request);
 
         DB::beginTransaction();
@@ -57,7 +81,8 @@ class VentaController extends Controller
             return redirect()->route('ventas.index')->with('success', 'Venta registrada con éxito.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => $e->getMessage()]);
+            // withInput: el vendedor no pierde los productos ni el cliente que ya había cargado
+            return back()->withErrors(['error' => $e->getMessage()])->withInput();
         }
     }
 
@@ -67,12 +92,13 @@ class VentaController extends Controller
     public function edit(Venta $venta)
     {
         if (!$venta->puedeEditarse()) {
-            return redirect()->route('ventas.index')->withErrors(['error' => 'Solo se pueden editar ventas del día que aún no han sido anuladas.']);
+            return redirect()->route('ventas.index')->withErrors(['error' => self::NO_EDITABLE]);
         }
 
         $venta->load('detalles.producto');
-        $productos = Producto::where('stock', '>', 0)
+        $productos = Producto::where(fn ($q) => $q->where('activo', true)->where('stock', '>', 0))
             ->orWhereIn('id', $venta->detalles->pluck('producto_id'))
+            ->orderBy('nombre')
             ->get();
         $clientes = Cliente::where('activo', true)->orderBy('nombre')->get();
 
@@ -87,7 +113,7 @@ class VentaController extends Controller
     public function update(Request $request, Venta $venta)
     {
         if (!$venta->puedeEditarse()) {
-            return redirect()->route('ventas.index')->withErrors(['error' => 'Solo se pueden editar ventas del día que aún no han sido anuladas.']);
+            return redirect()->route('ventas.index')->withErrors(['error' => self::NO_EDITABLE]);
         }
 
         $this->validarVenta($request);
@@ -95,11 +121,14 @@ class VentaController extends Controller
         DB::beginTransaction();
 
         try {
+            // Los productos que ya estaban en la venta se pueden conservar aunque luego se hayan desactivado
+            $productosPrevios = $venta->detalles()->pluck('producto_id')->all();
+
             $this->devolverStock($venta);
             $venta->detalles()->delete();
 
             $pago = $this->datosPago($request);
-            $total = $this->registrarLineas($venta, $request->productos);
+            $total = $this->registrarLineas($venta, $request->productos, $productosPrevios);
             $this->verificarLimiteCredito($pago['cliente_id'], $total, $venta);
 
             $venta->update($pago + ['total' => $total, 'editada' => true] + $this->montosEnBolivares($total));
@@ -121,7 +150,7 @@ class VentaController extends Controller
     public function anular(Request $request, Venta $venta)
     {
         if (!$venta->puedeEditarse()) {
-            return redirect()->route('ventas.index')->withErrors(['error' => 'Solo se pueden anular ventas del día que aún no han sido anuladas.']);
+            return redirect()->route('ventas.index')->withErrors(['error' => self::NO_EDITABLE]);
         }
 
         $request->validate([
@@ -258,12 +287,20 @@ class VentaController extends Controller
      * Crea las líneas de la venta, descuenta el stock y devuelve el total.
      * Lanza excepción si algún producto no tiene stock suficiente.
      */
-    private function registrarLineas(Venta $venta, array $items): float
+    private function registrarLineas(Venta $venta, array $items, array $productosPermitidos = []): float
     {
         $total = 0.0;
 
         foreach ($items as $item) {
             $producto = Producto::lockForUpdate()->findOrFail($item['id']);
+
+            if (!$producto->activo && !in_array($producto->id, $productosPermitidos)) {
+                throw new \Exception("El producto {$producto->nombre} está desactivado y no se puede vender.");
+            }
+
+            if ($error = $producto->errorCantidad($item['cantidad'])) {
+                throw new \Exception($error);
+            }
 
             if ($producto->stock < $item['cantidad']) {
                 throw new \Exception("Stock insuficiente para el producto: {$producto->nombre}");
@@ -305,11 +342,12 @@ class VentaController extends Controller
 
         if ($saldo + $total > (float) $cliente->limite_credito) {
             throw new \Exception(sprintf(
-                'Esta venta supera el límite de crédito de %s: debe $%s, la venta es de $%s y el límite es $%s.',
+                'Esta venta supera el crédito disponible de %s: solo se le pueden fiar $%s más (debe $%s de un límite de $%s) y la venta es de $%s. Cobra una parte de contado o registra un abono primero.',
                 $cliente->nombre,
+                number_format($cliente->creditoDisponible($saldo), 2),
                 number_format($saldo, 2),
-                number_format($total, 2),
-                number_format($cliente->limite_credito, 2)
+                number_format($cliente->limite_credito, 2),
+                number_format($total, 2)
             ));
         }
     }

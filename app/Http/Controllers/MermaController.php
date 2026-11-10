@@ -72,6 +72,12 @@ class MermaController extends Controller
             // Se bloquea la fila para que dos operaciones simultáneas no dejen el stock negativo
             $producto = Producto::lockForUpdate()->findOrFail($request->producto_id);
 
+            // Productos por unidad (unidad, caja, atado, saco) se descartan en cantidades enteras
+            if ($error = $producto->errorCantidad($request->cantidad)) {
+                DB::rollBack();
+                return back()->withErrors(['cantidad' => $error])->withInput();
+            }
+
             if ($request->cantidad > $producto->stock) {
                 DB::rollBack();
                 return back()->withErrors(['error' => 'La cantidad a descartar (' . $request->cantidad . ') supera el stock disponible (' . $producto->stock . ').'])->withInput();

@@ -8,6 +8,7 @@ use App\Models\Venta;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Support\Moneda;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CajaController extends Controller
@@ -17,16 +18,16 @@ class CajaController extends Controller
      * más abonos cobrados. Lo cobrado en $ y lo cobrado en Bs. se cuentan por separado, como
      * el efectivo físico. Las ventas a crédito no mueven efectivo hasta que el cliente abona.
      */
-    private function resumenDelDia(): array
+    private function resumenDelDia(?string $fecha = null): array
     {
-        $hoy = now()->toDateString();
+        $dia = $fecha ? Carbon::parse($fecha)->toDateString() : now()->toDateString();
 
-        $contado = Venta::whereDate('fecha', $hoy)->where('anulada', false)->where('tipo_pago', 'contado');
+        $contado = Venta::whereDate('fecha', $dia)->where('anulada', false)->where('tipo_pago', 'contado');
         $contadoUsd = (float) (clone $contado)->where('moneda_pago', 'USD')->sum('total');
         $contadoVes = (float) (clone $contado)->where('moneda_pago', 'VES')->sum('total_ves');
-        $credito = (float) Venta::whereDate('fecha', $hoy)->where('anulada', false)->where('tipo_pago', 'credito')->sum('total');
+        $credito = (float) Venta::whereDate('fecha', $dia)->where('anulada', false)->where('tipo_pago', 'credito')->sum('total');
 
-        $abonos = Abono::whereDate('fecha', $hoy);
+        $abonos = Abono::whereDate('fecha', $dia);
         $abonosUsd = (float) (clone $abonos)->where('moneda', 'USD')->sum('monto');
         $abonosVes = (float) (clone $abonos)->where('moneda', 'VES')->sum('monto_moneda');
 
@@ -88,7 +89,8 @@ class CajaController extends Controller
             return back()->withErrors(['error' => 'Esta caja ya fue cerrada.']);
         }
 
-        $resumen = $this->resumenDelDia();
+        // Se cuadra contra los movimientos del día de ESA caja (puede cerrarse al día siguiente)
+        $resumen = $this->resumenDelDia($caja->fecha);
 
         // Esperado por moneda = fondo inicial + efectivo ingresado en el día
         $esperadoUsd = round($caja->monto_apertura + $resumen['ingresos_usd'], 2);
@@ -105,10 +107,47 @@ class CajaController extends Controller
             'diferencia' => round($request->monto_efectivo_real - $esperadoUsd, 2),
             'diferencia_ves' => round($realVes - $esperadoVes, 2),
             'estado' => 'CERRADA',
-            'observaciones' => $request->observaciones,
+            // Si la caja se reabrió antes, se conserva la nota de cada reapertura
+            'observaciones' => trim(($caja->observaciones ? $caja->observaciones . "\n" : '') . $request->observaciones) ?: null,
         ]);
 
         return redirect()->route('caja.index')->with('success', 'Cierre de caja completado y guardado correctamente.');
+    }
+
+    /**
+     * Reabre la caja de HOY si se cerró por error, para seguir registrando ventas y abonos.
+     * El cierre anterior queda anotado en las observaciones (quién, cuándo y qué se contó);
+     * al cerrarla de nuevo se vuelve a cuadrar con todos los movimientos del día.
+     */
+    public function reabrir(CierreCaja $caja)
+    {
+        if ($caja->estado !== 'CERRADA') {
+            return back()->withErrors(['error' => 'Esta caja ya está abierta.']);
+        }
+        if (Carbon::parse($caja->fecha)->toDateString() !== now()->toDateString()) {
+            return back()->withErrors(['error' => 'Solo se puede reabrir la caja de hoy. Las de días anteriores quedan como se cerraron.']);
+        }
+
+        $nota = sprintf(
+            '[Reabierta el %s por %s. Cierre anterior: contado %s / %s, diferencia %s / %s]',
+            now()->format('d/m/Y h:i A'),
+            auth()->user()->name,
+            Moneda::usd($caja->monto_efectivo_real),
+            Moneda::ves($caja->monto_efectivo_real_ves),
+            Moneda::usd($caja->diferencia),
+            Moneda::ves($caja->diferencia_ves)
+        );
+
+        $caja->update([
+            'estado' => 'ABIERTA',
+            'monto_efectivo_real' => null,
+            'monto_efectivo_real_ves' => null,
+            'diferencia' => 0,
+            'diferencia_ves' => null,
+            'observaciones' => trim(($caja->observaciones ? $caja->observaciones . "\n" : '') . $nota),
+        ]);
+
+        return redirect()->route('caja.index')->with('success', 'Caja reabierta. Ya puedes registrar ventas y abonos; al terminar, ciérrala de nuevo.');
     }
 
     public function exportarExcel(): StreamedResponse

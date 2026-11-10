@@ -37,7 +37,8 @@ class Proveedor extends Model
         if (!$this->whatsapp) {
             return null;
         }
-        $numero = preg_replace('/\D/', '', $this->whatsapp);
+        // wa.me necesita el número internacional: 04121234567 → 584121234567
+        $numero = \App\Support\Contacto::telefonoWhatsapp($this->whatsapp);
         return $numero ? "https://wa.me/{$numero}" : null;
     }
 

@@ -25,9 +25,11 @@ class Producto extends Model
         'stock_minimo',
         'stock_maximo',
         'fecha_vencimiento',
+        'activo',
     ];
 
     protected $casts = [
+        'activo' => 'boolean',
         'fecha_vencimiento' => 'date',
         'stock' => 'float',
         'stock_minimo' => 'float',
@@ -43,6 +45,56 @@ class Producto extends Model
         'saco' => 'Saco',
         'litro' => 'Litro',
     ];
+
+    // Unidades que se cuentan enteras (1, 2, 3…). Kg, Lb y Litro admiten hasta 3 decimales.
+    const UNIDADES_ENTERAS = ['unidad', 'caja', 'atado', 'saco'];
+
+    public static function unidadEsEntera(?string $unidad): bool
+    {
+        return in_array($unidad, self::UNIDADES_ENTERAS, true);
+    }
+
+    // ¿Las cantidades de este producto van sin decimales?
+    public function usaCantidadEntera(): bool
+    {
+        return self::unidadEsEntera($this->unidad_medida);
+    }
+
+    // Texto bajo el campo de cantidad cuando todavía no se eligió un producto
+    const AYUDA_SIN_PRODUCTO = 'Elige el producto: según su unidad de medida se permiten o no decimales.';
+
+    // Explica la regla de cantidad según la unidad de medida (se muestra bajo el campo de cantidad)
+    public static function ayudaParaUnidad(?string $unidad): string
+    {
+        $nombre = self::UNIDADES[$unidad] ?? (string) $unidad;
+
+        return self::unidadEsEntera($unidad)
+            ? "Se cuenta por {$nombre}: sin decimales (ej. 3)."
+            : "Se mide en {$nombre}: admite decimales (ej. 2.5).";
+    }
+
+    public function ayudaCantidad(): string
+    {
+        return self::ayudaParaUnidad($this->unidad_medida);
+    }
+
+    /**
+     * Revisa una cantidad para este producto. Devuelve el mensaje de error para el usuario,
+     * o null si está bien (un producto por unidad no acepta 1.5).
+     */
+    public function errorCantidad(float|string $cantidad): ?string
+    {
+        if ($this->usaCantidadEntera() && !self::esEntero($cantidad)) {
+            return "{$this->nombre} se cuenta por " . mb_strtolower($this->unidadLabel()) . ': escribe una cantidad sin decimales (ej. 1, 2, 3).';
+        }
+
+        return null;
+    }
+
+    public static function esEntero(float|string|null $valor): bool
+    {
+        return abs((float) $valor - round((float) $valor)) < 0.0005;
+    }
 
     public function categoria()
     {
@@ -67,6 +119,23 @@ class Producto extends Model
         return $this->hasMany(Merma::class);
     }
 
+    // Ajustes manuales de existencia (stock inicial, conteos, correcciones)
+    public function ajustes()
+    {
+        return $this->hasMany(AjusteInventario::class);
+    }
+
+    // Tiene movimientos que forman parte del historial contable (no se puede eliminar)
+    public function tieneHistorial(): bool
+    {
+        return $this->compras()->exists() || $this->detallesVenta()->exists() || $this->mermas()->exists();
+    }
+
+    public function scopeActivos($query)
+    {
+        return $query->where('activo', true);
+    }
+
     public function unidadLabel(): string
     {
         return self::UNIDADES[$this->unidad_medida] ?? $this->unidad_medida;
@@ -77,16 +146,16 @@ class Producto extends Model
         return $this->stock <= $this->stock_minimo;
     }
 
-    // Sin existencias (la alerta más urgente)
+    // Sin existencias (la alerta más urgente). Los productos desactivados no generan alertas.
     public function scopeAgotados($query)
     {
-        return $query->where('stock', '<=', 0);
+        return $query->where('activo', true)->where('stock', '<=', 0);
     }
 
     // Bajo el mínimo pero todavía con algo de existencia (no se solapa con "agotados")
     public function scopeStockCritico($query)
     {
-        return $query->whereColumn('stock', '<=', 'stock_minimo')->where('stock', '>', 0);
+        return $query->where('activo', true)->whereColumn('stock', '<=', 'stock_minimo')->where('stock', '>', 0);
     }
 
     public function diasParaVencer(): ?int

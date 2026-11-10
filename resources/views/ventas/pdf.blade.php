@@ -99,7 +99,7 @@
             @foreach($venta->detalles as $detalle)
                 <tr>
                     <td>{{ $detalle->producto->nombre ?? 'Producto no disponible' }}</td>
-                    <td style="text-align: center;">{{ $detalle->cantidad }}</td>
+                    <td style="text-align: center;">{{ \App\Support\Cantidad::formato($detalle->cantidad) }}</td>
                     <td style="text-align: right;">${{ number_format($detalle->precio_unitario, 2) }}</td>
                     <td style="text-align: right;">${{ number_format($detalle->subtotal, 2) }}</td>
                 </tr>

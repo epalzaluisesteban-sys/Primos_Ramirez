@@ -4,7 +4,8 @@
 
 @push('head')
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    {{-- qrcode 1.5.x ya no publica build/qrcode.min.js (404); 1.4.4 sí, con la misma API toCanvas --}}
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
     <style>
         @media print {
             body.modo-etiqueta .ocultar-en-etiqueta { display: none !important; }
@@ -13,64 +14,61 @@
 @endpush
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="pagina">
 
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 ocultar-en-etiqueta">
-            <a href="{{ route('productos.index') }}" class="flex items-center gap-1.5 text-sm font-semibold text-stone-500 hover:text-stone-800">
-                <x-icon name="arrow-left" class="w-4 h-4" /> Volver a Productos
-            </a>
+        <x-encabezado titulo="Kardex" subtitulo="Cada entrada y salida de este producto, con la existencia que quedó." :volver="route('productos.index')" class="ocultar-en-etiqueta">
             <x-acciones-exportar :excel="route('productos.kardex.excel', $producto)" :pdf="route('productos.kardex.pdf', $producto)" />
-        </div>
+        </x-encabezado>
 
-        <!-- Cabecera Informativa del Producto -->
-        <div class="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 mb-8 border-t-4 border-emerald-600 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ocultar-en-etiqueta">
+        <!-- Cabecera del producto -->
+        <div class="tarjeta mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ocultar-en-etiqueta">
             <div class="flex items-center gap-4">
                 @if($producto->fotoUrl())
-                    <img src="{{ $producto->fotoUrl() }}" alt="{{ $producto->nombre }}" class="w-14 h-14 rounded-lg object-cover border border-stone-300">
+                    <img src="{{ $producto->fotoUrl() }}" alt="{{ $producto->nombre }}" class="w-14 h-14 rounded-md object-cover border border-stone-300 dark:border-stone-700">
                 @endif
                 <div>
-                    <h2 class="font-display text-xl font-bold text-stone-900">{{ $producto->nombre }}</h2>
-                    <p class="text-xs text-stone-500 font-medium mt-1">
-                        Categoría: <span class="font-bold text-stone-600">{{ $producto->categoria->nombre ?? 'Sin Categoría' }}</span>
-                        @if($producto->marca) · Marca: <span class="font-bold text-stone-600">{{ $producto->marca }}</span> @endif
-                        @if($producto->ubicacion) · Ubicación: <span class="font-bold text-stone-600">{{ $producto->ubicacion }}</span> @endif
+                    <h2 class="titulo-tarjeta text-lg">{{ $producto->nombre }}</h2>
+                    <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                        Categoría: <span class="font-bold text-stone-700 dark:text-stone-200">{{ $producto->categoria->nombre ?? 'Sin categoría' }}</span>
+                        @if($producto->marca) · Marca: <span class="font-bold text-stone-700 dark:text-stone-200">{{ $producto->marca }}</span> @endif
+                        @if($producto->ubicacion) · Ubicación: <span class="font-bold text-stone-700 dark:text-stone-200">{{ $producto->ubicacion }}</span> @endif
                     </p>
-                    <p class="text-xs text-stone-500">
-                        Precio de Venta: <span class="font-bold text-emerald-800">@usd($producto->precio) · @bs($producto->precio)</span>
+                    <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                        Precio de venta: <span class="font-bold text-emerald-800 dark:text-emerald-400">@usd($producto->precio) · @bs($producto->precio)</span>
                         @if($producto->precio_compra !== null)
-                            · Precio de Compra: <span class="font-bold text-stone-600">${{ number_format($producto->precio_compra, 2) }}</span>
-                            · Margen: <span class="font-bold {{ $producto->porcentajeGanancia() >= 0 ? 'text-emerald-700' : 'text-rose-600' }}">{{ number_format($producto->porcentajeGanancia(), 1) }}%</span>
+                            · Costo: <span class="font-bold text-stone-700 dark:text-stone-200">@usd($producto->precio_compra)</span>
+                            · Margen: <span class="font-bold {{ $producto->porcentajeGanancia() >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' }}">{{ number_format($producto->porcentajeGanancia(), 1) }}%</span>
                         @endif
                     </p>
                 </div>
             </div>
 
-            <div class="bg-stone-50 border border-stone-300 px-6 py-3 rounded-xl text-center">
-                <span class="text-xs text-stone-500 uppercase font-bold block">Stock Disponible Actual</span>
-                <span class="text-3xl font-black {{ $producto->stock <= 5 ? 'text-rose-600' : 'text-stone-800' }}">
-                    {{ $producto->stock }} <span class="text-sm font-normal text-stone-500">unids.</span>
+            <div class="caja-suave px-6 py-3 text-center shrink-0">
+                <span class="etiqueta mb-0">Existencia actual</span>
+                <span class="font-display text-3xl font-black {{ $producto->tieneStockCritico() ? 'text-rose-600 dark:text-rose-400' : 'text-stone-800 dark:text-stone-100' }}">
+                    {{ \App\Support\Cantidad::formato($producto->stock) }} <span class="text-sm font-normal text-stone-500 dark:text-stone-400">{{ $producto->unidadLabel() }}</span>
                 </span>
-                @if($producto->stock_maximo)
-                    <span class="text-[11px] text-stone-400 block">Máximo: {{ $producto->stock_maximo }}</span>
-                @endif
+                <span class="text-[11px] text-stone-400 dark:text-stone-500 block">
+                    Mínimo: {{ \App\Support\Cantidad::formato($producto->stock_minimo) }}@if($producto->stock_maximo) · Máximo: {{ \App\Support\Cantidad::formato($producto->stock_maximo) }}@endif
+                </span>
             </div>
         </div>
 
-        <!-- Etiqueta del Producto: código de barras y QR escaneables -->
-        <div class="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 mb-8">
-            <div class="flex items-center justify-between mb-4 ocultar-en-etiqueta">
-                <h3 class="font-display text-sm font-bold text-stone-800 flex items-center gap-2">
-                    <x-icon name="tag" class="w-4 h-4 text-stone-500" /> Etiqueta del Producto
+        <!-- Etiqueta del producto: código de barras y QR escaneables -->
+        <div class="tarjeta mb-6">
+            <div class="flex items-center justify-between gap-3 mb-4 ocultar-en-etiqueta">
+                <h3 class="titulo-tarjeta">Etiqueta del producto
                 </h3>
-                <button type="button" id="btn-imprimir-etiqueta" class="no-print flex items-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold px-4 py-2.5 rounded-xl text-sm shadow-sm transition">
-                    <x-icon name="printer" class="w-4 h-4" /> Imprimir Etiqueta
+                <button type="button" id="btn-imprimir-etiqueta" class="btn-secundario btn-sm no-print">
+                    <x-icon name="printer" class="w-4 h-4" /> Imprimir etiqueta
                 </button>
             </div>
-            <div id="etiqueta-imprimible" class="flex flex-wrap items-center gap-8">
+            {{-- Siempre en blanco, también en modo oscuro: es la vista previa del papel y los lectores necesitan fondo claro --}}
+            <div id="etiqueta-imprimible" class="inline-flex flex-wrap items-center gap-x-8 gap-y-4 max-w-full bg-white text-stone-800 rounded-md border border-stone-200 dark:border-stone-600 p-4 [&_svg]:max-w-full [&_canvas]:max-w-full">
                 <div>
-                    <p class="text-sm font-bold text-stone-800">{{ $producto->nombre }}</p>
+                    <p class="text-sm font-bold">{{ $producto->nombre }}</p>
                     @if($producto->marca)<p class="text-xs text-stone-500">{{ $producto->marca }}</p>@endif
-                    <p class="text-sm font-bold text-emerald-800 mt-1">${{ number_format($producto->precio, 2) }}</p>
+                    <p class="text-sm font-bold text-emerald-800 mt-1">@usd($producto->precio)</p>
                 </div>
                 <div class="text-center">
                     <svg id="svg-codigo-barras"></svg>
@@ -85,63 +83,74 @@
             </div>
         </div>
 
-        <!-- Tabla Kardex de Movimientos -->
-        <div class="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 ocultar-en-etiqueta">
-            <h3 class="font-display text-base font-bold text-stone-800 mb-1 flex items-center gap-2">
-                <x-icon name="clock" class="w-4 h-4 text-stone-500" /> Kardex — Entradas, Salidas y Costo
-            </h3>
-            @if($discrepanciaStock)
-                <p class="text-xs text-amber-600 mb-4 flex items-center gap-1.5">
-                    <x-icon name="alert-triangle" class="w-3.5 h-3.5" />
-                    La existencia calculada a partir de los movimientos ({{ $existenciaFinal }}) difiere del stock actual del sistema ({{ $producto->stock }}); puede deberse a un ajuste manual de stock no registrado como movimiento.
-                </p>
-            @else
-                <p class="text-xs text-stone-400 mb-4">La existencia calculada coincide con el stock actual del sistema.</p>
-            @endif
+        <!-- Kardex de movimientos -->
+        <div class="tarjeta p-0 overflow-hidden ocultar-en-etiqueta">
+            <div class="px-6 py-4 border-b border-stone-200 dark:border-stone-700">
+                <h3 class="titulo-tarjeta">Movimientos (kardex)
+                </h3>
+                @if($discrepanciaStock)
+                    <div class="aviso-ambar mt-3 text-xs">
+                        <x-icon name="alert-triangle" class="w-4 h-4 shrink-0" />
+                        <span>La existencia según los movimientos ({{ \App\Support\Cantidad::formato($existenciaFinal) }}) no coincide con el stock del sistema ({{ \App\Support\Cantidad::formato($producto->stock) }}). El stock se cambió por fuera del sistema; corrígelo con un ajuste de inventario.</span>
+                    </div>
+                @else
+                    <p class="text-xs text-stone-500 dark:text-stone-400 mt-1 flex items-center gap-1.5">
+                        <x-icon name="check-circle" class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Los movimientos cuadran con el stock actual.
+                    </p>
+                @endif
+            </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm text-stone-600">
-                    <thead class="text-stone-500 uppercase text-xs border-b border-stone-200">
+                <table class="tabla">
+                    <thead>
                         <tr>
-                            <th class="py-3 px-4 font-semibold">Fecha</th>
-                            <th class="py-3 px-4 font-semibold">Hora</th>
-                            <th class="py-3 px-4 font-semibold text-center">Entrada</th>
-                            <th class="py-3 px-4 font-semibold text-center">Salida</th>
-                            <th class="py-3 px-4 font-semibold text-right">Costo Anterior</th>
-                            <th class="py-3 px-4 font-semibold text-right">Costo Nuevo</th>
-                            <th class="py-3 px-4 font-semibold text-center">Existencia</th>
-                            <th class="py-3 px-4 font-semibold">Usuario</th>
-                            <th class="py-3 px-4 font-semibold">Observaciones</th>
+                            <th>Fecha</th>
+                            <th class="text-center">Movimiento</th>
+                            <th class="text-right">Costo</th>
+                            <th class="text-center">Existencia</th>
+                            <th>Usuario</th>
+                            <th>Detalle</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-stone-100">
+                    <tbody>
                         @forelse($movimientos as $mov)
-                            <tr class="hover:bg-stone-50">
-                                <td class="py-3 px-4 text-xs font-semibold whitespace-nowrap">{{ $mov['fecha']->format('d/m/Y') }}</td>
-                                <td class="py-3 px-4 text-xs whitespace-nowrap">{{ $mov['fecha']->format('h:i A') }}</td>
-                                <td class="py-3 px-4 text-center font-bold text-base text-emerald-700">
-                                    {{ $mov['es_entrada'] ? '+' . $mov['cantidad'] : '—' }}
+                            <tr>
+                                <td class="whitespace-nowrap">
+                                    <span class="block text-xs font-semibold text-stone-700 dark:text-stone-200">{{ $mov['fecha']->format('d/m/Y') }}</span>
+                                    <span class="block text-[11px] text-stone-400 dark:text-stone-500">{{ $mov['fecha']->format('h:i A') }}</span>
                                 </td>
-                                <td class="py-3 px-4 text-center font-bold text-base text-blue-700">
-                                    {{ !$mov['es_entrada'] ? '-' . $mov['cantidad'] : '—' }}
+                                <td class="text-center whitespace-nowrap">
+                                    @if($mov['es_entrada'])
+                                        <span class="font-bold text-base text-emerald-700 dark:text-emerald-400">+{{ \App\Support\Cantidad::formato($mov['cantidad']) }}</span>
+                                        <span class="block text-[10px] uppercase font-semibold text-stone-400 dark:text-stone-500">Entrada</span>
+                                    @else
+                                        <span class="font-bold text-base text-rose-600 dark:text-rose-400">−{{ \App\Support\Cantidad::formato($mov['cantidad']) }}</span>
+                                        <span class="block text-[10px] uppercase font-semibold text-stone-400 dark:text-stone-500">Salida</span>
+                                    @endif
                                 </td>
-                                <td class="py-3 px-4 text-right">
-                                    {{ $mov['costo_anterior'] !== null ? '$' . number_format($mov['costo_anterior'], 2) : 'N/D' }}
+                                <td class="text-right whitespace-nowrap">
+                                    @php
+                                        $antes = $mov['costo_anterior'];
+                                        $despues = $mov['costo_nuevo'];
+                                    @endphp
+                                    @if($despues === null)
+                                        <span class="text-stone-400 dark:text-stone-500">N/D</span>
+                                    @elseif($antes !== null && round($antes, 2) != round($despues, 2))
+                                        <span class="text-xs text-stone-400 dark:text-stone-500 line-through">@usd($antes)</span>
+                                        <span class="font-semibold text-stone-800 dark:text-stone-100">@usd($despues)</span>
+                                    @else
+                                        <span class="font-semibold text-stone-800 dark:text-stone-100">@usd($despues)</span>
+                                    @endif
                                 </td>
-                                <td class="py-3 px-4 text-right font-semibold">
-                                    {{ $mov['costo_nuevo'] !== null ? '$' . number_format($mov['costo_nuevo'], 2) : 'N/D' }}
-                                </td>
-                                <td class="py-3 px-4 text-center font-bold {{ $mov['existencia'] < 0 ? 'text-rose-600' : 'text-stone-800' }}">
+                                <td class="text-center font-bold {{ $mov['existencia'] < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-stone-800 dark:text-stone-100' }}">
                                     {{ $mov['existencia'] }}
                                 </td>
-                                <td class="py-3 px-4 text-xs font-medium whitespace-nowrap">{{ $mov['responsable'] }}</td>
-                                <td class="py-3 px-4 text-xs text-stone-500">{{ $mov['observaciones'] }}</td>
+                                <td class="text-xs font-medium whitespace-nowrap">{{ $mov['responsable'] }}</td>
+                                <td class="text-xs text-stone-500 dark:text-stone-400">{{ $mov['observaciones'] }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="py-8 text-center text-stone-500">
-                                    No se registran movimientos de entrada ni salida para este producto aún.
-                                </td>
+                                <td colspan="6" class="tabla-vacia">Este producto todavía no tiene entradas ni salidas.</td>
                             </tr>
                         @endforelse
                     </tbody>

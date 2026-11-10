@@ -96,7 +96,14 @@ class User extends Authenticatable
     // permisos granular por usuario, solo una descripción del rol).
     public function permisosResumen(): array
     {
-        return match ($this->rol) {
+        return self::permisosDeRol($this->rol);
+    }
+
+    // Igual que permisosResumen() pero para cualquier rol: la pantalla de Personal
+    // lo usa para explicar cada opción del selector antes de guardar.
+    public static function permisosDeRol(?string $rol): array
+    {
+        return match ($rol) {
             'Dueno' => [
                 'Acceso total al sistema',
                 'Gestión de personal (crear/editar/revocar usuarios)',
@@ -112,7 +119,7 @@ class User extends Authenticatable
             default => [
                 'Registrar ventas',
                 'Abrir y cerrar caja',
-                'Ver alertas de stock',
+                'Ver avisos de stock en la campana',
                 'Sin acceso a reportes, compras ni gestión de personal',
             ],
         };

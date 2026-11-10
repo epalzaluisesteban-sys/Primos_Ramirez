@@ -3,7 +3,7 @@
 @section('titulo', 'Kardex - ' . $producto->nombre)
 @section('subtitulo', 'Kardex — ' . $producto->nombre)
 @section('resumen')
-    <strong>Existencia calculada:</strong> {{ $existenciaFinal }} — <strong>Stock actual del sistema:</strong> {{ $producto->stock }}
+    <strong>Existencia calculada:</strong> {{ \App\Support\Cantidad::formato($existenciaFinal) }} — <strong>Stock actual del sistema:</strong> {{ \App\Support\Cantidad::formato($producto->stock) }}
 @endsection
 
 @section('contenido')
@@ -26,8 +26,8 @@
                 <tr>
                     <td>{{ $mov['fecha']->format('d/m/Y') }}</td>
                     <td>{{ $mov['fecha']->format('h:i A') }}</td>
-                    <td style="text-align: center;">{{ $mov['es_entrada'] ? '+' . $mov['cantidad'] : '' }}</td>
-                    <td style="text-align: center;">{{ !$mov['es_entrada'] ? '-' . $mov['cantidad'] : '' }}</td>
+                    <td style="text-align: center;">{{ $mov['es_entrada'] ? '+' . \App\Support\Cantidad::formato($mov['cantidad']) : '' }}</td>
+                    <td style="text-align: center;">{{ !$mov['es_entrada'] ? '-' . \App\Support\Cantidad::formato($mov['cantidad']) : '' }}</td>
                     <td style="text-align: right;">{{ $mov['costo_anterior'] !== null ? '$' . number_format($mov['costo_anterior'], 2) : 'N/D' }}</td>
                     <td style="text-align: right;">{{ $mov['costo_nuevo'] !== null ? '$' . number_format($mov['costo_nuevo'], 2) : 'N/D' }}</td>
                     <td style="text-align: center;">{{ $mov['existencia'] }}</td>

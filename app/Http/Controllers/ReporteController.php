@@ -64,7 +64,7 @@ class ReporteController extends Controller
                     $p['cantidad'],
                     number_format($p['ingreso'], 2, '.', ''),
                     $p['costo_conocido'] ? number_format($p['costo'], 2, '.', '') : 'N/D',
-                    number_format($p['utilidad'], 2, '.', ''),
+                    $p['costo_conocido'] ? number_format($p['utilidad'], 2, '.', '') : 'N/D',
                     $p['costo_conocido'] ? number_format($p['margen'], 1, '.', '') : 'N/D',
                 ]);
             }
@@ -77,7 +77,7 @@ class ReporteController extends Controller
                     $c['cantidad'],
                     number_format($c['ingreso'], 2, '.', ''),
                     $c['costo_conocido'] ? number_format($c['costo'], 2, '.', '') : 'N/D',
-                    number_format($c['utilidad'], 2, '.', ''),
+                    $c['costo_conocido'] ? number_format($c['utilidad'], 2, '.', '') : 'N/D',
                     $c['costo_conocido'] ? number_format($c['margen'], 1, '.', '') : 'N/D',
                 ]);
             }
@@ -117,6 +117,7 @@ class ReporteController extends Controller
 
         $ingresoTotal = 0;
         $costoTotal = 0;
+        $ingresoSinCosto = 0; // lo vendido de productos sin compras registradas (costo desconocido)
         $hayCostoDesconocido = false;
         $porProducto = [];
         $porCategoria = [];
@@ -132,6 +133,7 @@ class ReporteController extends Controller
 
             if (!$costoConocido) {
                 $hayCostoDesconocido = true;
+                $ingresoSinCosto += $ingreso;
             }
 
             $ingresoTotal += $ingreso;
@@ -174,8 +176,11 @@ class ReporteController extends Controller
         uasort($porCategoria, fn ($a, $b) => $b['utilidad'] <=> $a['utilidad']);
         uasort($porProducto, fn ($a, $b) => $b['utilidad'] <=> $a['utilidad']);
 
-        $utilidadTotal = $ingresoTotal - $costoTotal;
-        $margenTotal = $ingresoTotal > 0 ? ($utilidadTotal / $ingresoTotal) * 100 : 0;
+        // La utilidad solo cuenta lo vendido con costo conocido: si no, un producto sin compras
+        // registradas aparecería con 100 % de ganancia.
+        $ingresoConCosto = $ingresoTotal - $ingresoSinCosto;
+        $utilidadTotal = $ingresoConCosto - $costoTotal;
+        $margenTotal = $ingresoConCosto > 0 ? ($utilidadTotal / $ingresoConCosto) * 100 : 0;
 
         return compact(
             'ingresoTotal',
@@ -183,6 +188,7 @@ class ReporteController extends Controller
             'utilidadTotal',
             'margenTotal',
             'hayCostoDesconocido',
+            'ingresoSinCosto',
             'porProducto',
             'porCategoria',
             'desde',

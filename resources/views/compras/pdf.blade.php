@@ -99,7 +99,7 @@
                 <tr>
                     <td>{{ $compra->fecha }}</td>
                     <td>{{ $compra->producto->nombre ?? 'Eliminado' }}</td>
-                    <td style="text-align: center;">{{ $compra->cantidad }}</td>
+                    <td style="text-align: center;">{{ \App\Support\Cantidad::formato($compra->cantidad) }}</td>
                     <td style="text-align: right;">${{ number_format($compra->precio_compra, 2) }}</td>
                     <td style="text-align: right;">${{ number_format($compra->total, 2) }}</td>
                     <td>{{ $compra->nombreProveedor() }}</td>

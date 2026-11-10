@@ -25,7 +25,7 @@
                 <tr>
                     <td>{{ $c->nombre }}</td>
                     <td>{{ $c->rif ?: '—' }}</td>
-                    <td>{{ $c->telefono ?: '—' }}</td>
+                    <td>{{ $c->telefono ? \App\Support\Contacto::telefono($c->telefono) : '—' }}</td>
                     <td>{{ $c->direccion ?: '—' }}</td>
                     <td>{{ $c->ventas_max_fecha ? \Carbon\Carbon::parse($c->ventas_max_fecha)->format('d/m/Y') : '—' }}</td>
                     <td style="text-align: right;">${{ number_format($c->ventas_sum_total ?? 0, 2) }}</td>

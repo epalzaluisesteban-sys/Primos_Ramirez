@@ -1,58 +1,54 @@
 @extends('layouts.app')
 
-@section('title', 'Pérdidas de Mercancía')
+@section('title', 'Pérdidas de mercancía')
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="pagina">
 
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div>
-                <h2 class="font-display text-xl font-bold text-stone-900 dark:text-stone-100">Pérdidas de Mercancía</h2>
-                <p class="text-sm text-stone-500 dark:text-stone-400 mt-0.5">Registra producto dañado, vencido o extraviado y mantén el inventario exacto.</p>
-            </div>
+        <x-encabezado titulo="Pérdidas de mercancía" subtitulo="Producto dañado, vencido o extraviado. Lo que registres aquí se resta del stock.">
             <x-acciones-exportar :excel="route('mermas.excel')" :pdf="route('mermas.pdf')" />
-        </div>
+        </x-encabezado>
 
         <!-- Resumen del mes -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
-            <div class="bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 p-6 border-t-4 border-rose-500">
-                <p class="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wide">Valor Perdido Este Mes (a precio venta)</p>
-                <p class="font-display text-2xl font-bold text-rose-600 dark:text-rose-400 mt-1">${{ number_format($valorPerdidoMes, 2) }}</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div class="tarjeta">
+                <p class="cifra-etiqueta">Valor perdido este mes (a precio de venta)</p>
+                <p class="cifra-valor text-rose-600 dark:text-rose-400">${{ number_format($valorPerdidoMes, 2) }}</p>
             </div>
-            <div class="bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 p-6 border-t-4 border-amber-500">
-                <p class="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wide">Unidades Descartadas Este Mes</p>
-                <p class="font-display text-2xl font-bold text-stone-800 dark:text-stone-100 mt-1">{{ $cantidadMes }}</p>
+            <div class="tarjeta">
+                <p class="cifra-etiqueta">Unidades descartadas este mes</p>
+                <p class="cifra-valor">{{ \App\Support\Cantidad::formato($cantidadMes) }}</p>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
             <!-- Formulario de Registro -->
-            <div class="bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 p-6 h-fit">
-                <h3 class="font-display text-base font-bold text-stone-800 dark:text-stone-100 mb-4 flex items-center gap-2">
-                    <x-icon name="package-x" class="w-4 h-4 text-rose-600" /> Registrar Pérdida
+            <div class="tarjeta h-fit">
+                <h3 class="titulo-tarjeta mb-4">Registrar pérdida
                 </h3>
 
                 <form action="{{ route('mermas.store') }}" method="POST" class="space-y-4">
                     @csrf
                     <div>
-                        <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase mb-1.5">Producto</label>
-                        <select name="producto_id" required class="w-full rounded-lg border-stone-300 dark:border-stone-600 border p-2.5 text-sm bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:ring-emerald-500 focus:border-emerald-500">
-                            <option value="">-- Seleccionar Producto --</option>
+                        <label class="etiqueta">Producto</label>
+                        <select name="producto_id" id="merma-producto" required onchange="ajustarCantidadSegunOpcion(this, document.getElementById('merma-cantidad'), document.getElementById('merma-ayuda-cantidad'))" class="campo">
+                            <option value="">-- Seleccionar producto --</option>
                             @foreach($productos as $prod)
-                                <option value="{{ $prod->id }}">{{ $prod->nombre }} (Stock: {{ $prod->stock }} {{ $prod->unidadLabel() }})</option>
+                                <option value="{{ $prod->id }}" data-entero="{{ $prod->usaCantidadEntera() ? 1 : 0 }}" data-ayuda="{{ $prod->ayudaCantidad() }}" @selected(old('producto_id', request('producto')) == $prod->id)>{{ $prod->nombre }} (Stock: {{ \App\Support\Cantidad::formato($prod->stock) }} {{ $prod->unidadLabel() }})</option>
                             @endforeach
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase mb-1.5">Cantidad a Descartar</label>
-                        <input type="number" name="cantidad" min="0.001" step="0.001" required class="w-full rounded-lg border-stone-300 dark:border-stone-600 border p-2.5 text-sm bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:ring-emerald-500 focus:border-emerald-500">
+                        <label class="etiqueta">Cantidad a descartar</label>
+                        <input type="number" name="cantidad" id="merma-cantidad" min="0.001" step="0.001" inputmode="decimal" data-entero="0" value="{{ old('cantidad') }}" required class="campo">
+                        <p id="merma-ayuda-cantidad" class="ayuda-campo" data-sin-producto="{{ \App\Models\Producto::AYUDA_SIN_PRODUCTO }}">{{ \App\Models\Producto::AYUDA_SIN_PRODUCTO }}</p>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase mb-1.5">Motivo</label>
-                        <select name="motivo" required class="w-full rounded-lg border-stone-300 dark:border-stone-600 border p-2.5 text-sm bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:ring-emerald-500 focus:border-emerald-500">
+                        <label class="etiqueta">Motivo</label>
+                        <select name="motivo" required class="campo">
                             @foreach(\App\Models\Merma::MOTIVOS as $key => $label)
                                 <option value="{{ $key }}">{{ $label }}</option>
                             @endforeach
@@ -60,19 +56,19 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase mb-1.5">Observación (Opcional)</label>
-                        <textarea name="observacion" rows="2" class="w-full rounded-lg border-stone-300 dark:border-stone-600 border p-2.5 text-sm bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:ring-emerald-500 focus:border-emerald-500"></textarea>
+                        <label class="etiqueta">Observación (Opcional)</label>
+                        <textarea name="observacion" rows="2" class="campo"></textarea>
                     </div>
 
-                    <button type="submit" class="w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-sm border border-stone-200 dark:border-stone-700 transition text-sm">
-                        <x-icon name="trending-down" class="w-4 h-4" /> Registrar y Descontar Stock
+                    <button type="submit" class="btn-peligro w-full">
+                        <x-icon name="trending-down" class="w-4 h-4" /> Registrar y descontar stock
                     </button>
                 </form>
             </div>
 
             <!-- Historial -->
-            <div class="lg:col-span-2 bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 p-6">
-                <h3 class="font-display text-base font-bold text-stone-800 dark:text-stone-100 mb-4">Historial de Pérdidas</h3>
+            <div class="tarjeta lg:col-span-2">
+                <h3 class="titulo-tarjeta mb-4">Historial de pérdidas</h3>
 
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-stone-600 dark:text-stone-300">
@@ -82,7 +78,7 @@
                                 <th class="py-3 px-4 font-semibold">Producto</th>
                                 <th class="py-3 px-4 font-semibold text-center">Cantidad</th>
                                 <th class="py-3 px-4 font-semibold">Motivo</th>
-                                <th class="py-3 px-4 font-semibold">Registrado Por</th>
+                                <th class="py-3 px-4 font-semibold">Registrado por</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-stone-100 dark:divide-stone-700">
@@ -90,7 +86,7 @@
                                 <tr class="hover:bg-stone-50 dark:hover:bg-stone-700/40">
                                     <td class="py-3 px-4 text-xs">{{ $merma->fecha->format('d/m/Y H:i') }}</td>
                                     <td class="py-3 px-4 font-bold text-stone-900 dark:text-stone-100">{{ $merma->producto->nombre ?? 'Eliminado' }}</td>
-                                    <td class="py-3 px-4 text-center font-bold text-rose-600 dark:text-rose-400">-{{ $merma->cantidad }}</td>
+                                    <td class="py-3 px-4 text-center font-bold text-rose-600 dark:text-rose-400">-{{ \App\Support\Cantidad::formato($merma->cantidad) }}</td>
                                     <td class="py-3 px-4 text-xs">
                                         <span class="bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-900/40 dark:text-rose-300 dark:border-rose-700 px-2.5 py-1 rounded-md font-semibold">
                                             {{ $merma->motivoLabel() }}
@@ -115,3 +111,10 @@
 
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        // Producto preseleccionado (desde alertas o tras un error): cantidad entera si se cuenta por unidad
+        ajustarCantidadSegunOpcion(document.getElementById('merma-producto'), document.getElementById('merma-cantidad'), document.getElementById('merma-ayuda-cantidad'));
+    </script>
+@endpush

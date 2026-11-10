@@ -73,7 +73,20 @@ return [
     'uploaded' => 'No se pudo subir :attribute.',
     'url' => ':Attribute debe ser una URL válida.',
 
-    'custom' => [],
+    'custom' => [
+        'telefono' => [
+            'regex' => 'El teléfono debe tener 11 números, empezando por 0 (ej. 04121234567). No se permiten letras.',
+        ],
+        'whatsapp' => [
+            'regex' => 'El WhatsApp debe tener 11 números, empezando por 0 (ej. 04121234567). No se permiten letras.',
+        ],
+        'documento_tipo' => [
+            'in' => 'Elige el tipo de documento: V, E, J, G o P.',
+        ],
+        'documento_numero' => [
+            'regex' => 'La cédula o RIF solo lleva números: de 6 a 9 (ej. 12345678). No se permiten letras.',
+        ],
+    ],
 
     'attributes' => [
         'name' => 'nombre',
@@ -84,6 +97,9 @@ return [
         'rol' => 'rol',
         'foto' => 'foto',
         'telefono' => 'teléfono',
+        'whatsapp' => 'WhatsApp',
+        'documento_tipo' => 'tipo de documento',
+        'documento_numero' => 'cédula o RIF',
         'direccion' => 'dirección',
         'categoria_id' => 'categoría',
         'producto_id' => 'producto',

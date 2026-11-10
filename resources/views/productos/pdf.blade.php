@@ -35,7 +35,7 @@
                     <td style="text-align: right;">{{ $p->precio_compra !== null ? '$' . number_format($p->precio_compra, 2) : '—' }}</td>
                     <td style="text-align: right;">${{ number_format($p->precio, 2) }}</td>
                     <td style="text-align: right;">{{ $p->porcentajeGanancia() !== null ? number_format($p->porcentajeGanancia(), 1) . '%' : '—' }}</td>
-                    <td style="text-align: center;">{{ $p->stock }} / min {{ $p->stock_minimo }}@if($p->stock_maximo) / max {{ $p->stock_maximo }}@endif</td>
+                    <td style="text-align: center;">{{ \App\Support\Cantidad::formato($p->stock) }} / min {{ \App\Support\Cantidad::formato($p->stock_minimo) }}@if($p->stock_maximo) / max {{ \App\Support\Cantidad::formato($p->stock_maximo) }}@endif</td>
                     <td>{{ $estados[$p->id] }}</td>
                     <td>{{ $p->fecha_vencimiento ? $p->fecha_vencimiento->format('d/m/Y') : '—' }}</td>
                     <td style="text-align: right;">${{ number_format($p->stock * $p->precio, 2) }}</td>

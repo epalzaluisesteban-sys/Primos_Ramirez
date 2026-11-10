@@ -16,6 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
     $middleware->alias([
         'role' => \App\Http\Middleware\CheckRole::class,
     ]);
+    // Mientras se restaura un respaldo no se aceptan cambios en el resto del sistema
+    $middleware->web(append: [\App\Http\Middleware\BloquearDuranteRestauracion::class]);
 })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

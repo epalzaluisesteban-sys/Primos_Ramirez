@@ -56,6 +56,22 @@ class Cliente extends Model
         return round($this->totalCredito() - $this->totalAbonado(), 2);
     }
 
+    /**
+     * Cuánto más se le puede fiar = límite de crédito − saldo pendiente (nunca negativo).
+     * null = sin límite (se le puede fiar cualquier monto). Si ya se calculó el saldo, se pasa
+     * para no repetir las consultas.
+     */
+    public function creditoDisponible(?float $saldo = null): ?float
+    {
+        if ($this->limite_credito === null) {
+            return null;
+        }
+
+        $saldo ??= $this->saldoPendiente();
+
+        return max(0.0, round((float) $this->limite_credito - $saldo, 2));
+    }
+
     // Total comprado históricamente (contado + fiado), a diferencia de totalCredito()
     // que solo cuenta lo vendido a crédito.
     public function totalComprado(): float

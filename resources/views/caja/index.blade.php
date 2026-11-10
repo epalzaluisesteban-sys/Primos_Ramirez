@@ -1,31 +1,27 @@
 @extends('layouts.app')
 
-@section('title', 'Arqueo de Caja')
+@section('title', 'Caja del día')
 
 @section('content')
     @php
-        $campo = 'w-full rounded-lg border-stone-300 dark:border-stone-600 border p-2.5 text-lg font-bold bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:ring-emerald-500 focus:border-emerald-500';
-        $etiqueta = 'block text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase mb-1.5';
+        $campo = 'campo text-lg font-bold';
+        $etiqueta = 'etiqueta';
         $claseDiferencia = fn ($d) => $d < 0 ? 'text-rose-600 dark:text-rose-400' : ($d > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400');
     @endphp
-    <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="pagina">
 
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div>
-                <h2 class="font-display text-xl font-bold text-stone-900 dark:text-stone-100">Arqueo de Caja</h2>
-                <p class="text-sm text-stone-500 dark:text-stone-400 mt-0.5">Control de apertura, ventas y cierre de la jornada, en dólares y bolívares.</p>
-            </div>
+        <x-encabezado titulo="Caja del día" subtitulo="Apertura, ventas y cierre de la jornada, en dólares y bolívares.">
             <x-acciones-exportar :excel="route('caja.excel')" :pdf="route('caja.pdf')" />
-        </div>
+        </x-encabezado>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
             <!-- Panel de Control del Día -->
-            <div class="bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 p-6 border-t-4 border-emerald-600 h-fit">
-                <h3 class="font-display text-base font-bold text-stone-800 dark:text-stone-100 mb-4">Estado de Caja — {{ date('d/m/Y') }}</h3>
+            <div class="tarjeta h-fit">
+                <h3 class="titulo-tarjeta mb-4">Estado de caja — {{ date('d/m/Y') }}</h3>
 
                 @if(!$cajaHoy)
-                    <div class="flex items-start gap-2.5 bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 p-3.5 rounded-xl mb-4 text-xs text-amber-800 dark:text-amber-300">
+                    <div class="aviso-ambar mb-4 text-xs">
                         <x-icon name="alert-triangle" class="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
                         No se ha aperturado la caja para la jornada de hoy.
                     </div>
@@ -40,8 +36,8 @@
                             <label class="{{ $etiqueta }}">Fondo inicial en bolívares (Bs.)</label>
                             <input type="number" step="0.01" min="0" name="monto_apertura_ves" value="0.00" required class="{{ $campo }}">
                         </div>
-                        <button type="submit" class="w-full flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-sm transition text-sm">
-                            <x-icon name="key" class="w-4 h-4" /> Abrir Caja del Día
+                        <button type="submit" class="btn-primario w-full">
+                            <x-icon name="key" class="w-4 h-4" /> Abrir caja del día
                         </button>
                     </form>
 
@@ -82,23 +78,23 @@
                             <input type="number" step="0.01" min="0" name="monto_efectivo_real_ves" required placeholder="0.00" class="{{ $campo }}">
                         </div>
                         <div>
-                            <label class="{{ $etiqueta }}">Notas / Observaciones</label>
-                            <textarea name="observaciones" rows="2" placeholder="Ej. Cuadre perfecto / Billete deteriorado..." class="w-full rounded-lg border-stone-300 dark:border-stone-600 border p-2.5 text-xs bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:ring-emerald-500 focus:border-emerald-500"></textarea>
+                            <label class="{{ $etiqueta }}">Notas / observaciones</label>
+                            <textarea name="observaciones" rows="2" placeholder="Ej. Cuadre perfecto / Billete deteriorado..." class="campo text-xs"></textarea>
                         </div>
 
-                        <button type="submit" class="w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-sm transition text-sm">
-                            <x-icon name="lock" class="w-4 h-4" /> Realizar Arqueo y Cerrar Caja
+                        <button type="submit" class="btn-peligro w-full">
+                            <x-icon name="lock" class="w-4 h-4" /> Realizar arqueo y cerrar caja
                         </button>
                     </form>
 
                 @else
-                    <div class="bg-stone-50 dark:bg-stone-900/60 border border-stone-300 dark:border-stone-700 p-5 rounded-xl text-center">
+                    <div class="bg-stone-50 dark:bg-stone-900/60 border border-stone-300 dark:border-stone-700 p-5 rounded-md text-center">
                         <span class="w-10 h-10 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center mx-auto mb-2">
                             <x-icon name="lock" class="w-4 h-4 text-stone-500 dark:text-stone-400" />
                         </span>
-                        <h4 class="font-display font-bold text-stone-800 dark:text-stone-100">Caja Cerrada</h4>
+                        <h4 class="font-display font-bold text-stone-800 dark:text-stone-100">Caja cerrada</h4>
                         <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">La jornada del día de hoy ya ha sido auditada y finalizada.</p>
-                        <table class="mt-4 w-full text-xs text-left bg-white dark:bg-stone-800 rounded-lg border border-stone-200 dark:border-stone-700">
+                        <table class="mt-4 w-full text-xs text-left bg-white dark:bg-stone-800 rounded-md border border-stone-200 dark:border-stone-700">
                             <thead class="text-stone-400 uppercase text-[11px]"><tr><th class="p-2"></th><th class="p-2 text-right">Dólares</th><th class="p-2 text-right">Bolívares</th></tr></thead>
                             <tbody class="divide-y divide-stone-100 dark:divide-stone-700">
                                 <tr><td class="p-2 font-semibold">Ingresos</td><td class="p-2 text-right">@usd($cajaHoy->monto_ventas_sistema)</td><td class="p-2 text-right">@ves($cajaHoy->monto_ventas_sistema_ves)</td></tr>
@@ -108,13 +104,31 @@
                                     <td class="p-2 text-right font-bold {{ $claseDiferencia($cajaHoy->diferencia_ves) }}">@ves($cajaHoy->diferencia_ves)</td></tr>
                             </tbody>
                         </table>
+
+                        @if($cajaHoy->observaciones)
+                            <p class="mt-3 text-[11px] text-left text-stone-500 dark:text-stone-400 whitespace-pre-line">{{ $cajaHoy->observaciones }}</p>
+                        @endif
+
+                        @if(auth()->user()->esEncargadoOSuperior())
+                            <form action="{{ route('caja.reabrir', $cajaHoy->id) }}" method="POST" class="mt-4"
+                                  data-confirm="¿Reabrir la caja de hoy? Podrás seguir registrando ventas y abonos. El cierre anterior queda anotado y tendrás que volver a contar el efectivo al cerrarla.">
+                                @csrf
+                                @method('PUT')
+                                <button type="submit" class="btn-secundario w-full">
+                                    <x-icon name="key" class="w-4 h-4" /> Reabrir caja
+                                </button>
+                            </form>
+                            <p class="ayuda-campo">Úsalo si se cerró por error o falta registrar algo de hoy.</p>
+                        @else
+                            <p class="ayuda-campo mt-3">¿Se cerró por error? Pide a un encargado que la reabra.</p>
+                        @endif
                     </div>
                 @endif
             </div>
 
             <!-- Historial de Arqueos -->
-            <div class="lg:col-span-2 bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 p-6">
-                <h3 class="font-display text-base font-bold text-stone-800 dark:text-stone-100 mb-4">Historial Reciente de Cierres</h3>
+            <div class="tarjeta lg:col-span-2">
+                <h3 class="titulo-tarjeta mb-4">Historial reciente de cierres</h3>
 
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-stone-600 dark:text-stone-300">
@@ -123,7 +137,7 @@
                                 <th class="py-3 px-4 font-semibold">Fecha</th>
                                 <th class="py-3 px-4 font-semibold text-right">Apertura</th>
                                 <th class="py-3 px-4 font-semibold text-right">Ingresos</th>
-                                <th class="py-3 px-4 font-semibold text-right">Efectivo Real</th>
+                                <th class="py-3 px-4 font-semibold text-right">Efectivo real</th>
                                 <th class="py-3 px-4 font-semibold text-right">Diferencia</th>
                                 <th class="py-3 px-4 font-semibold text-center">Estado</th>
                             </tr>
@@ -142,9 +156,9 @@
                                     </td>
                                     <td class="py-3 px-4 text-center">
                                         @if($cierre->estado === 'ABIERTA')
-                                            <span class="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-bold text-xs px-2.5 py-1 rounded-full">Abierta</span>
+                                            <span class="insignia-ambar">Abierta</span>
                                         @else
-                                            <span class="bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-200 font-bold text-xs px-2.5 py-1 rounded-full">Cerrada</span>
+                                            <span class="bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-200 font-bold text-xs px-2.5 py-1 rounded">Cerrada</span>
                                         @endif
                                     </td>
                                 </tr>

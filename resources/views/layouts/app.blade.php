@@ -15,6 +15,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Los Primos Ramírez')</title>
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
@@ -23,7 +24,8 @@
     @stack('head')
 
     <style>
-        body { background: #FBF7EE; }
+        /* Fondo crema solo en modo claro: este <style> no usa capas de Tailwind y taparía dark:bg-stone-950 */
+        html:not(.dark) body { background: #FBF7EE; }
         .font-display { font-family: 'Manrope', sans-serif; }
         .market-stripe { background: linear-gradient(90deg, #16a34a 0%, #16a34a 33%, #f97316 33%, #f97316 66%, #dc2626 66%, #dc2626 100%); }
 
@@ -34,10 +36,7 @@
             .shadow-sm, .shadow-md { box-shadow: none !important; }
         }
 
-        /* Animaciones globales */
-        @keyframes fade-in-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in-up { animation: fade-in-up .35s ease-out; }
-
+        /* Animaciones del modal, avisos y carga */
         @keyframes scale-in { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
         .animate-scale-in { animation: scale-in .2s ease-out; }
 
@@ -56,7 +55,7 @@
         @include('partials.nav')
     @endauth
 
-    <main class="animate-fade-in-up">
+    <main>
         @yield('content')
     </main>
 
@@ -66,7 +65,7 @@
     <!-- Modal de Confirmación (reemplaza confirm() nativo) -->
     <div id="modal-confirmacion" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 no-print">
         <div class="absolute inset-0 bg-stone-900/50 dark:bg-black/60 backdrop-blur-sm" data-modal-cancelar></div>
-        <div class="relative bg-white dark:bg-stone-800 rounded-2xl shadow-xl border border-stone-200 dark:border-stone-700 max-w-sm w-full p-6 animate-scale-in">
+        <div class="tarjeta relative shadow-xl max-w-sm w-full animate-scale-in">
             <div class="flex items-start gap-3 mb-5">
                 <span class="shrink-0 w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center">
                     <x-icon name="alert-triangle" class="w-5 h-5" />
@@ -77,8 +76,8 @@
                 </div>
             </div>
             <div class="flex justify-end gap-3">
-                <button type="button" data-modal-cancelar class="px-4 py-2 rounded-xl text-sm font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition">Cancelar</button>
-                <button type="button" id="modal-confirmacion-aceptar" class="px-4 py-2 rounded-xl text-sm font-semibold bg-rose-600 hover:bg-rose-700 text-white transition">Sí, continuar</button>
+                <button type="button" data-modal-cancelar class="btn-secundario py-2">Cancelar</button>
+                <button type="button" id="modal-confirmacion-aceptar" class="btn-peligro py-2">Sí, continuar</button>
             </div>
         </div>
     </div>
@@ -87,6 +86,78 @@
     <div id="loader-bar" class="fixed top-0 left-0 h-1 bg-emerald-600 dark:bg-emerald-500 z-[300] w-0 opacity-0 transition-all duration-300 pointer-events-none"></div>
 
     <script>
+        // Deja solo números en un campo mientras se escribe o se pega (teléfono, cédula).
+        // Con esTelefono, un número pegado en formato internacional (+58 412…) pasa a 0412….
+        function soloDigitos(campo, maximo, esTelefono) {
+            let valor = campo.value.replace(/\D/g, '');
+            if (esTelefono && valor.length === 12 && valor.startsWith('58')) {
+                valor = '0' + valor.slice(2);
+            }
+            valor = valor.slice(0, maximo);
+            if (campo.value !== valor) {
+                campo.value = valor;
+            }
+        }
+
+        // Ojito del componente campo-clave: muestra u oculta la contraseña.
+        function alternarClave(boton) {
+            const campo = document.getElementById(boton.dataset.campo);
+            const mostrar = campo.type === 'password';
+            campo.type = mostrar ? 'text' : 'password';
+            const [ojo, ojoTachado] = boton.querySelectorAll('svg');
+            ojo.classList.toggle('hidden', mostrar);
+            ojoTachado.classList.toggle('hidden', !mostrar);
+            const texto = mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña';
+            boton.setAttribute('aria-label', texto);
+            boton.title = texto;
+            boton.setAttribute('aria-pressed', mostrar ? 'true' : 'false');
+        }
+
+        // Al enviar un formulario, las contraseñas vuelven a ocultarse (para que el navegador no las guarde como texto).
+        document.addEventListener('submit', function (e) {
+            e.target.querySelectorAll('[data-campo]').forEach(function (b) {
+                const campo = document.getElementById(b.dataset.campo);
+                if (campo && campo.type === 'text') alternarClave(b);
+            });
+        }, true);
+
+        // Cantidades: los productos por unidad, caja, atado o saco van sin decimales; kg, lb y litro admiten 3.
+        // `entera` sale de data-entero="1" en la opción del producto elegido (ver Producto::usaCantidadEntera()).
+        function ajustarCantidad(campo, entera) {
+            if (!campo) return;
+            campo.step = entera ? '1' : '0.001';
+            campo.min = entera ? '1' : '0.001';
+            campo.inputMode = entera ? 'numeric' : 'decimal';
+            campo.dataset.entero = entera ? '1' : '0';
+        }
+
+        // La regla sale de la unidad de medida del producto elegido (data-entero y data-ayuda en su <option>).
+        // `ayuda` (opcional) es el texto bajo el campo que explica si admite decimales.
+        function ajustarCantidadSegunOpcion(select, campo, ayuda) {
+            const opcion = select.options[select.selectedIndex];
+            const hayProducto = !!opcion && !!opcion.value;
+            ajustarCantidad(campo, hayProducto && opcion.dataset.entero === '1');
+            if (ayuda) {
+                ayuda.textContent = hayProducto ? (opcion.dataset.ayuda || '') : (ayuda.dataset.sinProducto || '');
+            }
+        }
+
+        // En un campo de cantidad entera no se puede escribir punto, coma ni signos.
+        document.addEventListener('keydown', function (e) {
+            if (e.target.matches && e.target.matches('input[data-entero="1"]') && ['.', ',', 'e', 'E', '-', '+'].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+        // Respaldo para teclados de teléfono y texto pegado (no siempre avisan qué tecla fue): se quitan los decimales.
+        document.addEventListener('input', function (e) {
+            const campo = e.target;
+            if (!campo.matches || !campo.matches('input[data-entero="1"]') || campo.value === '') return;
+            const numero = Number(campo.value);
+            if (!Number.isInteger(numero)) {
+                campo.value = Number.isFinite(numero) ? Math.trunc(Math.abs(numero)) : '';
+            }
+        });
+
         // Filtro de texto reutilizable para listados (productos, proveedores, clientes).
         // Oculta las filas <tbody><tr> cuyo texto no contenga lo escrito en el input.
         function filtrarTabla(idInput, idTabla) {
@@ -118,7 +189,7 @@
 
             const contenedor = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            toast.className = 'animate-toast-in flex items-start gap-2.5 text-white text-sm font-semibold px-4 py-3 rounded-xl shadow-lg ' + estilo.clases;
+            toast.className = 'animate-toast-in flex items-start gap-2.5 text-white text-sm font-semibold px-4 py-3 rounded-md shadow-lg ' + estilo.clases;
             toast.innerHTML = '<svg class="w-4 h-4 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">' +
                 (estilo.icono === 'check-circle' ? '<circle cx="12" cy="12" r="8.5"/><path d="M8 12.3l2.4 2.4L16.2 9"/>' : '<path d="M12 4.5 21 19.5H3z"/><path d="M12 10v3.5"/><circle cx="12" cy="16.5" r=".9" fill="currentColor" stroke="none"/>') +
                 '</svg><span class="flex-1">' + mensaje + '</span>';

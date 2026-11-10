@@ -55,15 +55,19 @@ class DashboardController extends Controller
             })
             ->get();
 
-        $ingresoMes = (float) $detallesMes->sum('subtotal');
-        $costoMes = (float) $detallesMes->sum(fn ($d) => ($costosPromedio[$d->producto_id] ?? 0) * $d->cantidad);
-        $gananciaNetaMes = $ingresoMes - $costoMes;
-        $margenMes = $ingresoMes > 0 ? ($gananciaNetaMes / $ingresoMes) * 100 : 0;
+        // Lo vendido de productos sin compras registradas no tiene costo conocido: se deja fuera
+        // de la ganancia (si no, saldría como 100 % de ganancia) y se avisa en la tarjeta.
+        [$conCosto, $sinCosto] = $detallesMes->partition(fn ($d) => isset($costosPromedio[$d->producto_id]));
+        $ingresoConCostoMes = (float) $conCosto->sum('subtotal');
+        $ingresoSinCostoMes = (float) $sinCosto->sum('subtotal');
+        $costoMes = (float) $conCosto->sum(fn ($d) => $costosPromedio[$d->producto_id] * $d->cantidad);
+        $gananciaNetaMes = $ingresoConCostoMes - $costoMes;
+        $margenMes = $ingresoConCostoMes > 0 ? ($gananciaNetaMes / $ingresoConCostoMes) * 100 : 0;
 
         // ==========================================
         // 5. Productos agotándose (stock crítico)
         // ==========================================
-        $productosStockBajo = Producto::whereColumn('stock', '<=', 'stock_minimo')
+        $productosStockBajo = Producto::activos()->whereColumn('stock', '<=', 'stock_minimo')
             ->with('categoria')
             ->orderBy('stock', 'asc')
             ->get();
@@ -187,7 +191,18 @@ class DashboardController extends Controller
         $serieVentasComparativo = $mesesComparativo->map(fn ($m) => (float) ($ventasPorMesMap[$m] ?? 0));
         $serieComprasComparativo = $mesesComparativo->map(fn ($m) => (float) ($comprasPorMesMap[$m] ?? 0));
 
+        // Recordatorio para el Dueño: respaldo manual hace más de RespaldoService::DIAS_AVISO días (o nunca)
+        $avisoRespaldo = null;
+        if (auth()->user()->esDueno()) {
+            $ultimoRespaldo = \App\Models\Respaldo::where('tipo', 'manual')->latest('id')->first();
+            $diasSinRespaldo = $ultimoRespaldo ? (int) $ultimoRespaldo->created_at->copy()->startOfDay()->diffInDays(now()->startOfDay()) : null;
+            if (!$ultimoRespaldo || $diasSinRespaldo > \App\Services\RespaldoService::DIAS_AVISO) {
+                $avisoRespaldo = $ultimoRespaldo ? "El último respaldo fue hace {$diasSinRespaldo} días." : 'Todavía no se ha hecho ningún respaldo de la información.';
+            }
+        }
+
         return view('dashboard', compact(
+            'avisoRespaldo',
             'ventasHoyMonto',
             'ventasHoyCant',
             'ventasHoyVes',
@@ -198,6 +213,8 @@ class DashboardController extends Controller
             'variacionComprasMes',
             'gananciaNetaMes',
             'margenMes',
+            'ingresoSinCostoMes',
+            'ingresoConCostoMes',
             'productosStockBajo',
             'productosVencidos',
             'productosPorVencer',
