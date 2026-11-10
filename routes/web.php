@@ -59,7 +59,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:Dueno,Encargado'])->group(function () {
         
         // Gestión de Productos e Historial Kardex
-        Route::resource('productos', ProductoController::class)->except(['destroy']);
+        Route::resource('productos', ProductoController::class)->except(['show', 'destroy']);
         Route::get('productos-exportar-excel', [ProductoController::class, 'exportarExcel'])->name('productos.excel');
         Route::get('productos-exportar-pdf', [ProductoController::class, 'exportarPDF'])->name('productos.pdf');
         Route::get('productos/{producto}/kardex', [ProductoController::class, 'kardex'])->name('productos.kardex');
@@ -67,7 +67,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('productos/{producto}/kardex/pdf', [ProductoController::class, 'kardexPDF'])->name('productos.kardex.pdf');
 
         // Gestión de Categorías
-        Route::resource('categorias', CategoriaController::class)->except(['destroy']);
+        Route::resource('categorias', CategoriaController::class)->except(['show', 'destroy']);
 
         // Entrada de Inventario (Compras)
         Route::resource('compras', CompraController::class)->only(['index', 'store']);

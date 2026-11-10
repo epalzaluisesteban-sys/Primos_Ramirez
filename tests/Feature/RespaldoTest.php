@@ -250,6 +250,25 @@ class RespaldoTest extends TestCase
         }
     }
 
+    // En Render el disco del servidor se borra al reiniciar: los respaldos van al bucket privado de Supabase
+    // y los archivos subidos para restaurar se quedan en el disco local hasta confirmar.
+    public function test_en_produccion_los_respaldos_se_guardan_en_el_bucket_privado(): void
+    {
+        config(['filesystems.respaldos_disk' => 'respaldos']);
+        Storage::fake('respaldos');
+
+        $respaldo = $this->crearRespaldo();
+
+        Storage::disk('respaldos')->assertExists($respaldo->ruta());
+        Storage::disk('local')->assertMissing($respaldo->ruta());
+        $this->actingAs($this->dueno)->get(route('respaldos.index'))->assertOk()->assertDontSee('Ya no está');
+        $this->actingAs($this->dueno)->get(route('respaldos.descargar', $respaldo))->assertOk();
+
+        $archivo = UploadedFile::fake()->createWithContent('respaldo.json', Storage::disk('respaldos')->get($respaldo->ruta()));
+        $this->actingAs($this->dueno)->post(route('respaldos.preparar'), ['archivo' => $archivo])->assertSessionHasNoErrors();
+        $this->assertCount(1, Storage::disk('local')->files(RespaldoService::CARPETA . '/pendientes'));
+    }
+
     public function test_mientras_se_restaura_no_se_aceptan_cambios(): void
     {
         Cache::put('restauracion_en_curso', true, 60);

@@ -15,10 +15,10 @@ class Respaldo extends Model
         return RespaldoService::CARPETA . '/' . $this->archivo;
     }
 
-    // En Render el disco del servidor es temporal: el archivo puede ya no estar aunque quede el registro.
+    // El archivo puede ya no estar aunque quede el registro (se borró a mano o se guardó en un disco temporal).
     public function existeArchivo(): bool
     {
-        return Storage::disk(RespaldoService::DISCO)->exists($this->ruta());
+        return Storage::disk(RespaldoService::disco())->exists($this->ruta());
     }
 
     public function tamanoLegible(): string

@@ -40,7 +40,9 @@ php artisan test                 # SQLite en memoria (phpunit.xml)
 
 **Respaldos:** un solo `.json` de texto plano (formato 2: datos por tabla y, al final, las fotos en base64),
 independiente del motor (MySQL ↔ PostgreSQL). Al restaurar también se aceptan los `.tar.gz` del formato 1; el tipo se
-reconoce por el contenido. Se guardan en el disco privado `local` (`storage/app/private/respaldos`), nunca en el de fotos.
+reconoce por el contenido. Se guardan en el disco de `RespaldoService::disco()` (`RESPALDOS_DISK`): `local`
+(`storage/app/private/respaldos`) en la PC y el bucket privado `respaldos` de Supabase en Render, nunca en el de fotos.
+Los archivos subidos para restaurar quedan siempre en `local` (`DISCO_PENDIENTES`).
 **Si agregas una tabla con datos del negocio, súmala a `RespaldoService::TABLAS`** (después de las que referencia) y,
 si guarda fotos, a `COLUMNAS_FOTO`; si no, no entrará en los respaldos. Restaurar hace antes un respaldo automático.
 

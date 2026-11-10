@@ -116,7 +116,7 @@
                         </thead>
                         <tbody>
                             @forelse($respaldos as $r)
-                                @php $existe = $r->existeArchivo(); @endphp
+                                @php $existe = isset($enServidor[$r->archivo]); @endphp
                                 <tr class="{{ $existe ? '' : 'opacity-60' }}">
                                     <td class="whitespace-nowrap">
                                         <span class="block text-stone-800 dark:text-stone-100">{{ $r->created_at->format('d/m/Y') }}</span>

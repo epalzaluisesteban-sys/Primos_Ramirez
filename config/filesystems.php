@@ -22,6 +22,12 @@ return [
     'media_disk' => env('MEDIA_DISK', 'public'),
 
     /*
+    | Disco donde quedan los respaldos (App\Services\RespaldoService).
+    | 'local' en la PC; 'respaldos' en Render, porque allá el disco del servidor se borra en cada reinicio.
+    */
+    'respaldos_disk' => env('RESPALDOS_DISK', 'local'),
+
+    /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
@@ -69,6 +75,21 @@ return [
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'throw' => false,
+            'report' => false,
+        ],
+
+        // Respaldos en producción: bucket PRIVADO de Supabase (traen hashes de contraseñas y datos de clientes).
+        // 'throw' para que un respaldo que no se pudo guardar se note en vez de quedar anotado sin archivo.
+        'respaldos' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_BUCKET_RESPALDOS', 'respaldos'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'throw' => true,
             'report' => false,
         ],
 

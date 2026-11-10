@@ -12,3 +12,9 @@ storage/framework/sessions/*
 storage/framework/views/*
 database/database.sqlite
 *.log
+# Fotos y respaldos de la PC (los respaldos traen datos de clientes y contraseñas)
+storage/app/public/*
+storage/app/private/*
+.claude
+.agents
+tests

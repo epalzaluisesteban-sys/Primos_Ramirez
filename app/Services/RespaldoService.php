@@ -36,7 +36,8 @@ class RespaldoService
 {
     public const SISTEMA = 'primos-ramirez';
     public const FORMATO = 2;              // 1 = .tar.gz (solo lectura), 2 = .json de texto plano
-    public const DISCO = 'local';          // privado: el respaldo trae datos sensibles (hashes de contraseñas)
+    // Archivos subidos para restaurar: siempre en el disco local, porque se leen por ruta y solo duran hasta confirmar
+    public const DISCO_PENDIENTES = 'local';
     public const CARPETA = 'respaldos';
     public const DIAS_AVISO = 7;           // el Inicio avisa al Dueño si pasa más tiempo sin respaldar
 
@@ -61,6 +62,12 @@ class RespaldoService
     // Columna con la ruta de la foto en el disco de fotos (App\Support\Almacen)
     private const COLUMNAS_FOTO = ['users' => 'foto', 'categorias' => 'imagen', 'clientes' => 'foto', 'productos' => 'foto'];
     private const CARPETAS_FOTO = ['usuarios', 'categorias', 'clientes', 'productos'];
+
+    /** Disco de los respaldos guardados (config filesystems.respaldos_disk). Siempre privado. */
+    public static function disco(): string
+    {
+        return config('filesystems.respaldos_disk');
+    }
 
     /** Crea un respaldo, lo guarda en el servidor y lo registra en el historial. */
     public function crear(string $autor, string $tipo = 'manual', ?string $nota = null): Respaldo
@@ -324,7 +331,7 @@ class RespaldoService
             'fotos' => (object) $fotos,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR);
 
-        Storage::disk(self::DISCO)->put(self::CARPETA . '/' . $nombre, $contenido);
+        Storage::disk(self::disco())->put(self::CARPETA . '/' . $nombre, $contenido);
 
         return Respaldo::create([
             'archivo' => $nombre,

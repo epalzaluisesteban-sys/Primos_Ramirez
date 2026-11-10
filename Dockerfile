@@ -34,6 +34,7 @@ WORKDIR /var/www/html
 COPY --from=vendor /app /var/www/html
 COPY --from=assets /app/public/build /var/www/html/public/build
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY docker/php.ini /usr/local/etc/php/conf.d/zz-primos-ramirez.ini
 
 RUN chmod +x /usr/local/bin/entrypoint.sh \
     && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \

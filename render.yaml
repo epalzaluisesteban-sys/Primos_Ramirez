@@ -5,6 +5,8 @@ services:
     name: primos-ramirez
     runtime: docker
     plan: free
+    # Misma región que el proyecto de Supabase (East US - North Virginia): cada consulta cruza menos distancia
+    region: virginia
     healthCheckPath: /up
     envVars:
       - key: APP_NAME
@@ -43,6 +45,8 @@ services:
       # Sesiones / caché / colas en la base de datos
       - key: SESSION_DRIVER
         value: database
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
       - key: CACHE_STORE
         value: database
       - key: QUEUE_CONNECTION
@@ -64,6 +68,11 @@ services:
         sync: false            # https://TU-PROYECTO.supabase.co/storage/v1/object/public/fotos
       - key: AWS_USE_PATH_STYLE_ENDPOINT
         value: "true"
+      # Respaldos en un bucket PRIVADO de Supabase (el disco de Render se borra en cada reinicio)
+      - key: RESPALDOS_DISK
+        value: respaldos
+      - key: AWS_BUCKET_RESPALDOS
+        value: respaldos
       # Primer usuario Dueño (solo se usa si no existe ninguno)
       - key: ADMIN_NAME
         value: Administrador

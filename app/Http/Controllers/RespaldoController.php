@@ -31,8 +31,12 @@ class RespaldoController extends Controller
             ? (int) $ultimoManual->created_at->copy()->startOfDay()->diffInDays(now()->startOfDay())
             : null;
         $actual = $this->servicio->resumenActual();
+        // Una sola consulta al disco (en Supabase cada consulta es una petición por internet)
+        $enServidor = collect(Storage::disk(RespaldoService::disco())->files(RespaldoService::CARPETA))
+            ->map(fn ($ruta) => basename($ruta))
+            ->flip();
 
-        return view('respaldos.index', compact('respaldos', 'ultimoManual', 'diasSinRespaldo', 'actual'));
+        return view('respaldos.index', compact('respaldos', 'ultimoManual', 'diasSinRespaldo', 'actual', 'enServidor'));
     }
 
     public function store()
@@ -55,12 +59,12 @@ class RespaldoController extends Controller
             return back()->withErrors(['error' => 'Ese archivo ya no está en el servidor. Usa la copia que descargaste.']);
         }
 
-        return Storage::disk(RespaldoService::DISCO)->download($respaldo->ruta(), $respaldo->archivo);
+        return Storage::disk(RespaldoService::disco())->download($respaldo->ruta(), $respaldo->archivo);
     }
 
     public function destroy(Respaldo $respaldo)
     {
-        Storage::disk(RespaldoService::DISCO)->delete($respaldo->ruta());
+        Storage::disk(RespaldoService::disco())->delete($respaldo->ruta());
         $respaldo->delete();
 
         return back()->with('success', 'Respaldo eliminado del servidor.');
@@ -84,7 +88,7 @@ class RespaldoController extends Controller
         }
 
         $pendiente = (string) Str::uuid();
-        Storage::disk(RespaldoService::DISCO)->putFileAs(self::PENDIENTES, $request->file('archivo'), $pendiente . '.respaldo');
+        Storage::disk(RespaldoService::DISCO_PENDIENTES)->putFileAs(self::PENDIENTES, $request->file('archivo'), $pendiente . '.respaldo');
 
         return redirect()->route('respaldos.confirmar', $pendiente);
     }
@@ -143,7 +147,7 @@ class RespaldoController extends Controller
             return back()->withErrors(['error' => $e->getMessage()]);
         }
 
-        Storage::disk(RespaldoService::DISCO)->delete(self::PENDIENTES . '/' . $pendiente . '.respaldo');
+        Storage::disk(RespaldoService::DISCO_PENDIENTES)->delete(self::PENDIENTES . '/' . $pendiente . '.respaldo');
 
         // Los usuarios ahora son los del respaldo: se cierran todas las sesiones abiertas
         if (config('session.driver') === 'database') {
@@ -161,7 +165,7 @@ class RespaldoController extends Controller
     private function rutaPendiente(string $pendiente): ?string
     {
         $relativa = self::PENDIENTES . '/' . $pendiente . '.respaldo';
-        $disco = Storage::disk(RespaldoService::DISCO);
+        $disco = Storage::disk(RespaldoService::DISCO_PENDIENTES);
 
         return $disco->exists($relativa) ? $disco->path($relativa) : null;
     }
@@ -169,7 +173,7 @@ class RespaldoController extends Controller
     // Archivos subidos que nadie confirmó
     private function limpiarPendientes(): void
     {
-        $disco = Storage::disk(RespaldoService::DISCO);
+        $disco = Storage::disk(RespaldoService::DISCO_PENDIENTES);
         foreach ($disco->files(self::PENDIENTES) as $archivo) {
             if ($disco->lastModified($archivo) < now()->subDay()->getTimestamp()) {
                 $disco->delete($archivo);
