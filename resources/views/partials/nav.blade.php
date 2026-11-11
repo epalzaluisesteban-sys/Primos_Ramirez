@@ -21,11 +21,11 @@
             ['label' => 'Categorías', 'icon' => 'tag', 'route' => 'categorias.index', 'match' => ['categorias.*'], 'ayuda' => 'Grupos de productos (frutas, verduras…)'],
         ]];
         $menu[] = ['label' => 'Clientes', 'icon' => 'users', 'route' => 'clientes.index', 'match' => ['clientes.*']];
-        $menu[] = ['label' => 'Reportes', 'icon' => 'chart-bar', 'match' => ['reportes.*', 'estadisticas.*', 'historial.*', 'tasa.*'], 'items' => [
+        // La tasa BCV no va aquí: se abre desde la insignia de la barra superior (escritorio y celular)
+        $menu[] = ['label' => 'Reportes', 'icon' => 'chart-bar', 'match' => ['reportes.*', 'estadisticas.*', 'historial.*'], 'items' => [
             ['label' => 'Ganancias', 'icon' => 'chart-bar', 'route' => 'reportes.ganancias', 'match' => ['reportes.*'], 'ayuda' => 'Cuánto se ganó por producto y categoría'],
             ['label' => 'Estadísticas', 'icon' => 'pie', 'route' => 'estadisticas.index', 'match' => ['estadisticas.*'], 'ayuda' => 'Tendencias y predicción de demanda'],
             ['label' => 'Historial de movimientos', 'icon' => 'clock', 'route' => 'historial.index', 'match' => ['historial.*'], 'ayuda' => 'Todo lo que se hizo en el sistema, por fecha'],
-            ['label' => 'Tasa del dólar (BCV)', 'icon' => 'banknote', 'route' => 'tasa.index', 'match' => ['tasa.*'], 'ayuda' => 'Tasa del día para calcular bolívares'],
         ]];
     }
 
@@ -47,9 +47,10 @@
         <div class="flex items-center justify-between gap-3 h-16">
 
             <!-- Marca -->
-            <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 shrink-0">
+            {{-- En el celular solo el logo: el nombre no cabe junto a la tasa y el botón del menú --}}
+            <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 shrink-0" aria-label="Primos Ramírez, inicio">
                 <x-logo class="w-10 h-10 shrink-0" />
-                <span class="font-display text-stone-900 dark:text-stone-100 font-extrabold text-[15px] leading-tight whitespace-nowrap">
+                <span class="hidden sm:inline font-display text-stone-900 dark:text-stone-100 font-extrabold text-[15px] leading-tight whitespace-nowrap">
                     Primos Ramírez
                 </span>
             </a>
@@ -172,11 +173,14 @@
                 </div>
             </div>
 
-            <!-- Botón menú móvil -->
-            <button type="button" data-menu-movil-abrir aria-controls="menu-movil" aria-expanded="false" aria-label="Abrir menú"
-                    class="xl:hidden -mr-2 p-2 rounded-md text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800">
-                <x-icon name="menu" class="w-6 h-6" />
-            </button>
+            <!-- Tasa + botón menú (celular y tablet) -->
+            <div class="xl:hidden flex items-center gap-2 shrink-0">
+                <x-tasa-badge :tasa="$tasaActual ?? null" />
+                <button type="button" data-menu-movil-abrir aria-controls="menu-movil" aria-expanded="false" aria-label="Abrir menú"
+                        class="-mr-2 p-2 rounded-md text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800">
+                    <x-icon name="menu" class="w-6 h-6" />
+                </button>
+            </div>
         </div>
     </div>
 </nav>
@@ -218,7 +222,6 @@
 
         {{-- Cuenta: siempre visible al pie del panel, sin tener que desplazarse --}}
         <div class="shrink-0 border-t border-stone-200 dark:border-stone-700 px-3 py-3 space-y-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <div class="px-3 pb-2"><x-tasa-badge :tasa="$tasaActual ?? null" /></div>
             <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold text-stone-700 hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-stone-800">
                 <x-icon name="user-circle" class="w-5 h-5 shrink-0 opacity-70" />
                 <span class="min-w-0 truncate">{{ $usuarioNav->name }} <span class="font-normal text-stone-500 dark:text-stone-400">· {{ $usuarioNav->rol }}</span></span>
