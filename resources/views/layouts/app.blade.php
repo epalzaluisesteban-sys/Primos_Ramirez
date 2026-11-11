@@ -47,7 +47,8 @@
         .animate-spin { animation: spin .8s linear infinite; }
     </style>
 </head>
-<body class="font-sans antialiased min-h-screen text-stone-800 dark:bg-stone-950 dark:text-stone-200 transition-colors">
+{{-- min-h-dvh y no min-h-screen: en el celular 100vh mide más que lo visible con la barra del navegador y sobra scroll --}}
+<body class="font-sans antialiased min-h-dvh text-stone-800 dark:bg-stone-950 dark:text-stone-200 transition-colors">
 
     <div class="market-stripe h-1.5 w-full"></div>
 

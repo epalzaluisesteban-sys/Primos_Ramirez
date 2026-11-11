@@ -519,7 +519,8 @@
         const r = resumenCaja(estado);
         const textos = {
             caja: insigniaCaja(estado.caja),
-            efectivo: estado.caja === 'sin-abrir' ? '—' : usd(r.esperadoUsd) + '<br>' + ves(r.esperadoVes),
+            // En el celular los bolívares van en la misma línea que los dólares
+            efectivo: estado.caja === 'sin-abrir' ? '—' : usd(r.esperadoUsd) + '<span class="sm:block"><span class="sm:hidden"> · </span>' + ves(r.esperadoVes) + '</span>',
             tomate: cantidad(estado.productos.tomate.stock) + ' kg',
             aguacate: cantidad(estado.productos.aguacate.stock) + ' unidades',
             saldo: usd(estado.cliente.saldo),
@@ -577,8 +578,8 @@
     }
 
     async function moverCursor(el, id) {
-        // Solo se desplaza la página si la persona ya está mirando la pantalla de muestra (en el celular
-        // queda debajo de la explicación y no hay que quitarle lo que está leyendo)
+        // Solo se desplaza la página si la persona ya está mirando la pantalla de muestra
+        // (si bajó a leer la explicación del capítulo, no hay que quitarle lo que está leyendo)
         const visible = escenario.getBoundingClientRect();
         if (visible.top < window.innerHeight && visible.bottom > 0) {
             el.scrollIntoView({ block: 'nearest', behavior: reducido ? 'auto' : 'smooth' });
@@ -682,9 +683,9 @@
             cursor.style.opacity = '0';
             pista.textContent = 'Estás practicando. Para volver a ver la animación, presiona «Repetir».';
         } else if (modo === 'fin') {
-            pista.textContent = tienePractica ? 'Presiona «Pruébalo tú» para hacerlo tú, o «Siguiente» para seguir.' : 'Presiona «Siguiente» para seguir.';
+            pista.textContent = tienePractica ? 'Presiona «Practicar» para hacerlo tú, o «Siguiente» para seguir.' : 'Presiona «Siguiente» para seguir.';
         } else {
-            pista.textContent = tienePractica ? 'Puedes pausar la animación o presionar «Pruébalo tú» para hacerlo tú.' : '';
+            pista.textContent = tienePractica ? 'Puedes pausar la animación o presionar «Practicar» para hacerlo tú.' : '';
         }
     }
 
@@ -701,6 +702,13 @@
             boton.classList.toggle('btn-primario', activo);
             boton.classList.toggle('btn-secundario', !activo);
             if (activo) boton.setAttribute('aria-current', 'step'); else boton.removeAttribute('aria-current');
+            if (activo) {
+                // En el celular la fila de capítulos se desliza de lado: centrar el actual sin mover la página
+                const fila = document.getElementById('guia-capitulos');
+                const b = boton.getBoundingClientRect();
+                const f = fila.getBoundingClientRect();
+                fila.scrollLeft += (b.left + b.width / 2) - (f.left + f.width / 2);
+            }
         });
         history.replaceState(null, '', '#capitulo-' + (actual + 1));
         estado = estadoAlEmpezar(actual);

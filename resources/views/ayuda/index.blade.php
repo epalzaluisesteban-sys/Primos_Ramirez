@@ -95,7 +95,7 @@
     .guia-cambio { animation: guia-cambio 1s ease-out; }
     /* Al seguir el cursor en el celular, que el campo no quede tapado por el estado fijo de arriba */
     @media (max-width: 1023px) {
-        #guia-escenario [data-campo], #guia-escenario [data-accion], #guia-escenario [data-zona] { scroll-margin-top: 17rem; }
+        #guia-escenario [data-campo], #guia-escenario [data-accion], #guia-escenario [data-zona] { scroll-margin-top: 15rem; scroll-margin-bottom: 5rem; }
     }
     @media (prefers-reduced-motion: reduce) {
         #guia-cursor { display: none; }
@@ -113,12 +113,14 @@
         <x-icon name="lock" class="w-4 h-4 shrink-0 mt-0.5" />
         <p>
             <strong>Modo práctica: nada de lo que hagas aquí se guarda.</strong>
-            El tomate, el aguacate, el proveedor y el cliente son de ejemplo.
-            @if($tasaReal > 0)
-                Los bolívares se calculan con la última tasa cargada (@ves($tasa) por dólar).
-            @else
-                Como todavía no hay tasa cargada, se usa una de ejemplo (@ves($tasa) por dólar).
-            @endif
+            <span class="hidden sm:inline">
+                El tomate, el aguacate, el proveedor y el cliente son de ejemplo.
+                @if($tasaReal > 0)
+                    Los bolívares se calculan con la última tasa cargada (@ves($tasa) por dólar).
+                @else
+                    Como todavía no hay tasa cargada, se usa una de ejemplo (@ves($tasa) por dólar).
+                @endif
+            </span>
         </p>
     </div>
 
@@ -129,17 +131,74 @@
         </label>
     @endunless
 
-    <ol id="guia-capitulos" class="flex flex-wrap gap-1.5 mb-4" aria-label="Capítulos">
+    {{-- En el celular los capítulos van en una sola fila que se desliza de lado, para no empujar la pantalla de muestra hacia abajo --}}
+    <ol id="guia-capitulos" class="flex gap-1.5 mb-4 overflow-x-auto -mx-4 px-4 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:mx-0 sm:px-0" aria-label="Capítulos">
         @foreach($capitulos as $i => $cap)
-            <li data-capitulo-item data-quien="{{ $cap['quien'] }}">
-                <button type="button" data-ir="{{ $i }}" class="btn-secundario btn-sm" title="{{ $cap['titulo'] }}">
-                    <span class="font-bold">{{ $i + 1 }}</span><span class="hidden sm:inline">{{ $cap['titulo'] }}</span>
+            <li data-capitulo-item data-quien="{{ $cap['quien'] }}" class="shrink-0">
+                <button type="button" data-ir="{{ $i }}" class="btn-secundario btn-sm whitespace-nowrap" title="{{ $cap['titulo'] }}">
+                    <span class="font-bold">{{ $i + 1 }}</span><span>{{ $cap['titulo'] }}</span>
                 </button>
             </li>
         @endforeach
     </ol>
 
+    {{-- La pantalla de muestra va primero en el HTML: en el celular se ve antes que la explicación del capítulo --}}
     <div class="grid lg:grid-cols-3 gap-4 items-start">
+        <section class="tarjeta p-0 lg:col-span-2 lg:col-start-1 lg:row-start-1" aria-label="Pantalla de muestra">
+            <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-stone-200 dark:border-stone-700">
+                <p class="text-xs text-stone-500 dark:text-stone-400">Pantalla de muestra: <span id="guia-pantalla" class="font-semibold text-stone-700 dark:text-stone-200"></span></p>
+                <span class="insignia-azul">Práctica</span>
+            </div>
+
+            {{-- En el celular el estado y la narración quedan fijos arriba mientras la pantalla de muestra se desplaza --}}
+            {{-- En el celular cada dato va en una línea (etiqueta y valor juntos) para que lo fijo ocupe poco --}}
+            <div class="sticky top-16 z-20 lg:static bg-white dark:bg-stone-800 border-b border-stone-200 dark:border-stone-700">
+            <dl id="guia-estado" class="flex flex-wrap gap-x-4 gap-y-1 px-3 py-2 sm:grid sm:grid-cols-5 sm:gap-0 sm:p-0 border-b border-stone-200 dark:border-stone-700 text-sm">
+                <div class="flex items-baseline gap-1.5 sm:block sm:px-4 sm:py-2.5"><dt class="cifra-etiqueta">Caja</dt><dd class="sm:mt-1" data-estado="caja"></dd></div>
+                <div class="flex items-baseline gap-1.5 sm:block sm:px-4 sm:py-2.5"><dt class="cifra-etiqueta">Efectivo<span class="hidden sm:inline"> en caja</span></dt><dd class="sm:mt-1 font-semibold text-stone-800 dark:text-stone-100" data-estado="efectivo"></dd></div>
+                <div class="flex items-baseline gap-1.5 sm:block sm:px-4 sm:py-2.5"><dt class="cifra-etiqueta">Tomate</dt><dd class="sm:mt-1 font-semibold text-stone-800 dark:text-stone-100" data-estado="tomate"></dd></div>
+                <div class="flex items-baseline gap-1.5 sm:block sm:px-4 sm:py-2.5"><dt class="cifra-etiqueta">Aguacate</dt><dd class="sm:mt-1 font-semibold text-stone-800 dark:text-stone-100" data-estado="aguacate"></dd></div>
+                <div class="flex items-baseline gap-1.5 sm:block sm:px-4 sm:py-2.5"><dt class="cifra-etiqueta">Cliente debe</dt><dd class="sm:mt-1 font-semibold text-stone-800 dark:text-stone-100" data-estado="saldo"></dd></div>
+            </dl>
+            <div class="px-3 py-2 sm:px-4 sm:py-2.5 bg-stone-50 dark:bg-stone-900/60">
+                <p id="guia-narracion" class="text-sm font-semibold text-stone-800 dark:text-stone-100 min-h-[2.5rem]" aria-live="polite"></p>
+                <p id="guia-pista" class="ayuda-campo"></p>
+            </div>
+            </div>
+
+            <div id="guia-escenario" class="relative p-4 sm:p-5">
+                @foreach($capitulos as $cap)
+                    <div data-capitulo="{{ $cap['id'] }}" data-pantalla="{{ $cap['pantalla'] }}" hidden>
+                        @if(in_array($cap['id'], ['contado', 'fiado']))
+                            @include('ayuda._venta', ['prefijo' => $cap['id']])
+                        @else
+                            @include('ayuda._' . $cap['id'])
+                        @endif
+                    </div>
+                @endforeach
+
+                <div id="guia-cursor" class="pointer-events-none absolute left-0 top-0 z-10 opacity-0" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" class="w-6 h-6"><path d="M5 3l14 8.2-6.2 1.3L10 19z" fill="#1c1917" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                </div>
+            </div>
+
+            {{-- En el celular los botones quedan fijos abajo, cinco iguales con el ícono arriba del texto --}}
+            @php $botonGuia = 'btn-sm max-sm:flex-col max-sm:gap-0.5 max-sm:px-0.5 max-sm:py-1.5 max-sm:text-[11px] max-sm:leading-tight'; @endphp
+            <div class="sticky bottom-0 z-20 lg:static bg-white dark:bg-stone-800 border-t border-stone-200 dark:border-stone-700 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:pt-3 sm:pb-2.5">
+                <div class="grid grid-cols-5 gap-1.5 sm:flex sm:items-center sm:gap-2">
+                    <button type="button" id="guia-anterior" class="btn-secundario {{ $botonGuia }}"><x-icon name="arrow-left" class="w-4 h-4" /> Anterior</button>
+                    <button type="button" id="guia-pausa" class="btn-secundario {{ $botonGuia }}"><x-icon name="pause" class="w-4 h-4" /> <span>Pausa</span></button>
+                    <button type="button" id="guia-repetir" class="btn-secundario {{ $botonGuia }}"><x-icon name="repetir" class="w-4 h-4" /> Repetir</button>
+                    <button type="button" id="guia-practicar" class="btn-oscuro {{ $botonGuia }}"><x-icon name="edit" class="w-4 h-4" /> Practicar</button>
+                    <button type="button" id="guia-siguiente" class="btn-primario {{ $botonGuia }} max-sm:flex-col-reverse sm:ml-auto">Siguiente <x-icon name="arrow-right" class="w-4 h-4" /></button>
+                </div>
+            </div>
+            <label class="flex items-center gap-2 px-3 pb-3 sm:px-4 text-xs text-stone-600 dark:text-stone-400">
+                <input type="checkbox" id="guia-seguir" class="casilla" checked>
+                Pasar solo al siguiente capítulo al terminar
+            </label>
+        </section>
+
         <aside class="tarjeta p-4 lg:col-start-3 lg:row-start-1">
             @foreach($capitulos as $i => $cap)
                 <div data-texto="{{ $cap['id'] }}" hidden>
@@ -167,58 +226,6 @@
                 </div>
             @endforeach
         </aside>
-
-        <section class="tarjeta p-0 lg:col-span-2 lg:col-start-1 lg:row-start-1" aria-label="Pantalla de muestra">
-            <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-stone-200 dark:border-stone-700">
-                <p class="text-xs text-stone-500 dark:text-stone-400">Pantalla de muestra: <span id="guia-pantalla" class="font-semibold text-stone-700 dark:text-stone-200"></span></p>
-                <span class="insignia-azul">Práctica</span>
-            </div>
-
-            {{-- En el celular el estado y la narración quedan fijos arriba mientras la pantalla de muestra se desplaza --}}
-            <div class="sticky top-16 z-20 lg:static bg-white dark:bg-stone-800 border-b border-stone-200 dark:border-stone-700">
-            <dl id="guia-estado" class="grid grid-cols-3 sm:grid-cols-5 border-b border-stone-200 dark:border-stone-700 text-sm">
-                <div class="px-3 py-2 sm:px-4 sm:py-2.5"><dt class="cifra-etiqueta">Caja</dt><dd class="mt-1" data-estado="caja"></dd></div>
-                <div class="px-3 py-2 sm:px-4 sm:py-2.5 col-span-2 sm:col-span-1"><dt class="cifra-etiqueta">Efectivo en caja</dt><dd class="mt-1 font-semibold text-stone-800 dark:text-stone-100" data-estado="efectivo"></dd></div>
-                <div class="px-3 py-2 sm:px-4 sm:py-2.5"><dt class="cifra-etiqueta">Tomate</dt><dd class="mt-1 font-semibold text-stone-800 dark:text-stone-100" data-estado="tomate"></dd></div>
-                <div class="px-3 py-2 sm:px-4 sm:py-2.5"><dt class="cifra-etiqueta">Aguacate</dt><dd class="mt-1 font-semibold text-stone-800 dark:text-stone-100" data-estado="aguacate"></dd></div>
-                <div class="px-3 py-2 sm:px-4 sm:py-2.5"><dt class="cifra-etiqueta">Cliente debe</dt><dd class="mt-1 font-semibold text-stone-800 dark:text-stone-100" data-estado="saldo"></dd></div>
-            </dl>
-            <div class="px-4 py-2.5 bg-stone-50 dark:bg-stone-900/60">
-                <p id="guia-narracion" class="text-sm font-semibold text-stone-800 dark:text-stone-100 min-h-[2.5rem]" aria-live="polite"></p>
-                <p id="guia-pista" class="ayuda-campo"></p>
-            </div>
-            </div>
-
-            <div id="guia-escenario" class="relative p-4 sm:p-5">
-                @foreach($capitulos as $cap)
-                    <div data-capitulo="{{ $cap['id'] }}" data-pantalla="{{ $cap['pantalla'] }}" hidden>
-                        @if(in_array($cap['id'], ['contado', 'fiado']))
-                            @include('ayuda._venta', ['prefijo' => $cap['id']])
-                        @else
-                            @include('ayuda._' . $cap['id'])
-                        @endif
-                    </div>
-                @endforeach
-
-                <div id="guia-cursor" class="pointer-events-none absolute left-0 top-0 z-10 opacity-0" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" class="w-6 h-6"><path d="M5 3l14 8.2-6.2 1.3L10 19z" fill="#1c1917" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>
-                </div>
-            </div>
-
-            <div class="px-4 py-3 border-t border-stone-200 dark:border-stone-700 flex flex-wrap items-center justify-between gap-3">
-                <div class="flex flex-wrap gap-2">
-                    <button type="button" id="guia-anterior" class="btn-secundario btn-sm"><x-icon name="arrow-left" class="w-4 h-4" /> Anterior</button>
-                    <button type="button" id="guia-pausa" class="btn-secundario btn-sm"><x-icon name="pause" class="w-4 h-4" /> <span>Pausa</span></button>
-                    <button type="button" id="guia-repetir" class="btn-secundario btn-sm"><x-icon name="repetir" class="w-4 h-4" /> Repetir</button>
-                    <button type="button" id="guia-practicar" class="btn-oscuro btn-sm"><x-icon name="edit" class="w-4 h-4" /> Pruébalo tú</button>
-                </div>
-                <button type="button" id="guia-siguiente" class="btn-primario btn-sm">Siguiente <x-icon name="arrow-right" class="w-4 h-4" /></button>
-                <label class="w-full flex items-center gap-2 text-xs text-stone-600 dark:text-stone-400">
-                    <input type="checkbox" id="guia-seguir" class="casilla" checked>
-                    Pasar solo al siguiente capítulo al terminar
-                </label>
-            </div>
-        </section>
     </div>
 
     <template id="guia-icono-ok"><x-icon name="check-circle" class="w-4 h-4 shrink-0 mt-0.5" /></template>

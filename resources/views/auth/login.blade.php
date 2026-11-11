@@ -27,7 +27,7 @@
                     @csrf
                     <div>
                         <label for="email" class="etiqueta">Correo electrónico</label>
-                        <input id="email" name="email" type="email" required autofocus autocomplete="username" class="campo" placeholder="usuario@primosramirez.com" value="{{ old('email') }}">
+                        <input id="email" name="email" type="email" required autocomplete="username" class="campo" placeholder="usuario@primosramirez.com" value="{{ old('email') }}">
                     </div>
                     <x-campo-clave name="password" label="Contraseña" required />
 
@@ -39,3 +39,12 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        // Solo con mouse: en el celular el foco abre el teclado al cargar, tapa media pantalla y obliga a desplazarse
+        if (window.matchMedia('(pointer: fine)').matches) {
+            document.getElementById('email').focus();
+        }
+    </script>
+@endpush
