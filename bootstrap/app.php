@@ -11,7 +11,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
    ->withMiddleware(function (Middleware $middleware) {
-    // Detrás del proxy de Back4app (HTTPS termina allá): confiar en X-Forwarded-* para generar URLs https
+    // Detrás del proxy de Render (HTTPS termina allá): confiar en X-Forwarded-* para generar URLs https
     $middleware->trustProxies(at: '*');
     $middleware->alias([
         'role' => \App\Http\Middleware\CheckRole::class,

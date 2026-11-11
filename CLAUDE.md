@@ -14,8 +14,7 @@ php artisan serve                # http://127.0.0.1:8000  (o preview "laravel" d
 php artisan test                 # SQLite en memoria (phpunit.xml)
 ```
 
-- Producción: Back4app Containers (con el `Dockerfile`) + Supabase (PostgreSQL y almacenamiento S3). Ver `DESPLIEGUE.md`.
-  El puerto, los procesos de Apache y la memoria de PHP se ajustan por variables en `docker/entrypoint.sh`.
+- Producción: Render + Supabase (PostgreSQL y almacenamiento S3). Ver `DESPLIEGUE.md` y `render.yaml`.
 - `App\Support\SqlFecha` solo genera SQL para **MySQL y PostgreSQL**: el Dashboard, Reportes y Estadísticas
   no funcionan en SQLite, así que las pruebas no deben renderizar esas pantallas.
 
@@ -42,7 +41,7 @@ php artisan test                 # SQLite en memoria (phpunit.xml)
 **Respaldos:** un solo `.json` de texto plano (formato 2: datos por tabla y, al final, las fotos en base64),
 independiente del motor (MySQL ↔ PostgreSQL). Al restaurar también se aceptan los `.tar.gz` del formato 1; el tipo se
 reconoce por el contenido. Se guardan en el disco de `RespaldoService::disco()` (`RESPALDOS_DISK`): `local`
-(`storage/app/private/respaldos`) en la PC y el bucket privado `respaldos` de Supabase en producción, nunca en el de fotos.
+(`storage/app/private/respaldos`) en la PC y el bucket privado `respaldos` de Supabase en Render, nunca en el de fotos.
 Los archivos subidos para restaurar quedan siempre en `local` (`DISCO_PENDIENTES`).
 **Si agregas una tabla con datos del negocio, súmala a `RespaldoService::TABLAS`** (después de las que referencia) y,
 si guarda fotos, a `COLUMNAS_FOTO`; si no, no entrará en los respaldos. Restaurar hace antes un respaldo automático.
