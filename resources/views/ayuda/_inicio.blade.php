@@ -38,7 +38,7 @@
         <table class="tabla">
             <thead><tr><th>Rol</th><th>Qué hace</th></tr></thead>
             <tbody>
-                <tr><td class="font-semibold whitespace-nowrap">Obrero</td><td>Abre y cierra la caja, registra ventas y ve sus ventas.</td></tr>
+                <tr><td class="font-semibold whitespace-nowrap">Obrero</td><td>Abre y cierra la caja, registra ventas, ve sus ventas y, desde Clientes, cobra los abonos de los fiados.</td></tr>
                 <tr><td class="font-semibold whitespace-nowrap">Encargado</td><td>Lo del obrero y además compras, abonos, mermas, productos, clientes, proveedores y reportes. Puede corregir o eliminar ventas del día, restaurarlas desde la papelera y reabrir la caja.</td></tr>
                 <tr><td class="font-semibold whitespace-nowrap">Dueño</td><td>Todo: además maneja el personal, puede eliminar productos, clientes o proveedores y hace los respaldos.</td></tr>
             </tbody>

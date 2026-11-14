@@ -51,6 +51,12 @@ Route::middleware(['auth'])->group(function () {
     // Registrar un cliente sin salir de la venta (nombre, teléfono y cédula; el límite de crédito se pone en Clientes)
     Route::post('clientes-rapido', [ClienteController::class, 'registroRapido'])->name('clientes.rapido');
 
+    // Clientes para todos: el obrero entra a la lista y a la ficha para cobrar fiados.
+    // Crear, editar y exportar siguen siendo de encargado o dueño (whereNumber: que "clientes/create" no caiga aquí).
+    Route::get('clientes', [ClienteController::class, 'index'])->name('clientes.index');
+    Route::get('clientes/{cliente}', [ClienteController::class, 'show'])->whereNumber('cliente')->name('clientes.show');
+    Route::post('clientes/{cliente}/abonos', [ClienteController::class, 'registrarAbono'])->name('clientes.abonos.store');
+
     // Módulo de Perfil de Usuario
     Route::get('/perfil', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/perfil', [ProfileController::class, 'update'])->name('profile.update');
@@ -96,9 +102,8 @@ Route::middleware(['auth'])->group(function () {
 
         // Clientes y Cuentas por Cobrar (Fiado)
         Route::resource('clientes', ClienteController::class)
-            ->except(['destroy'])
+            ->except(['index', 'show', 'destroy'])
             ->parameters(['clientes' => 'cliente']);
-        Route::post('clientes/{cliente}/abonos', [ClienteController::class, 'registrarAbono'])->name('clientes.abonos.store');
         Route::get('clientes-exportar-excel', [ClienteController::class, 'exportarExcel'])->name('clientes.excel');
         Route::get('clientes-exportar-pdf', [ClienteController::class, 'exportarPDF'])->name('clientes.pdf');
 

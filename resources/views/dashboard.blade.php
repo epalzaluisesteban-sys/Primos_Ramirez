@@ -59,10 +59,10 @@
             if ($cajaHoy) {
                 $acciones[] = $accionCaja;
             }
+            $acciones[] = ['Cobrar un fiado', 'Registrar el abono de un cliente', 'users', route('clientes.index'), 'orange'];
 
             if ($esGerencia) {
                 $alertas = $productosStockBajo->count() + $productosVencidos->count();
-                $acciones[] = ['Cobrar un fiado', 'Registrar el abono de un cliente', 'users', route('clientes.index'), 'orange'];
                 $acciones[] = ['Recibir mercancía', 'Lo que llegó del proveedor', 'inbox-down', route('compras.index'), 'normal'];
                 $acciones[] = ['Registrar pérdida', 'Producto dañado o vencido', 'package-x', route('mermas.index'), 'normal'];
                 $acciones[] = ['Revisar alertas', $alertas > 0 ? "{$alertas} producto(s) necesitan atención" : 'Todo el inventario está en orden', 'alert-triangle', route('productos.index', ['filtro' => 'alertas']), $alertas > 0 ? 'amber' : 'normal'];

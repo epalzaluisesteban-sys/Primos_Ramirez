@@ -5,9 +5,13 @@
 @section('content')
     <div class="pagina">
 
-        <x-encabezado titulo="Clientes" subtitulo="Datos de cada cliente y lo que debe por ventas fiadas.">
-            <x-acciones-exportar :excel="route('clientes.excel')" :pdf="route('clientes.pdf')" />
-            <a href="{{ route('clientes.create') }}" class="btn-primario"><x-icon name="plus" class="w-4 h-4" /> Nuevo cliente</a>
+        {{-- El obrero entra para cobrar fiados: ve la lista y las fichas, pero no crea, edita ni exporta --}}
+        @php $gestiona = auth()->user()->esEncargadoOSuperior(); @endphp
+        <x-encabezado titulo="Clientes" subtitulo="Datos de cada cliente y lo que debe por ventas fiadas. Toca el billete para cobrarle un abono.">
+            @if($gestiona)
+                <x-acciones-exportar :excel="route('clientes.excel')" :pdf="route('clientes.pdf')" />
+                <a href="{{ route('clientes.create') }}" class="btn-primario"><x-icon name="plus" class="w-4 h-4" /> Nuevo cliente</a>
+            @endif
         </x-encabezado>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -92,9 +96,11 @@
                                         <a href="{{ route('clientes.show', $cli->id) }}" class="p-2 rounded-md bg-orange-50 hover:bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50 transition" title="Ver cuenta / Registrar abono">
                                             <x-icon name="banknote" class="w-4 h-4" />
                                         </a>
-                                        <a href="{{ route('clientes.edit', $cli->id) }}" class="p-2 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 transition" title="Editar">
-                                            <x-icon name="edit" class="w-4 h-4" />
-                                        </a>
+                                        @if($gestiona)
+                                            <a href="{{ route('clientes.edit', $cli->id) }}" class="p-2 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 transition" title="Editar">
+                                                <x-icon name="edit" class="w-4 h-4" />
+                                            </a>
+                                        @endif
                                         @if(auth()->user()->esDueno())
                                             <form action="{{ route('clientes.destroy', $cli->id) }}" method="POST" data-confirm="¿Seguro que desea eliminar este cliente?" class="inline">
                                                 @csrf

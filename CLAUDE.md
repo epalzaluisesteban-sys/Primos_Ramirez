@@ -50,7 +50,8 @@ si guarda fotos, a `COLUMNAS_FOTO`; si no, no entrará en los respaldos. Restaur
 
 - **Dueno** (sin tilde en BD): todo, incluido eliminar registros y gestionar personal.
 - **Encargado**: ventas, caja, inventario, compras, clientes, proveedores, reportes.
-- **Obrero**: registrar ventas, abrir/cerrar caja, ver sus ventas.
+- **Obrero**: registrar ventas, abrir/cerrar caja, ver sus ventas y entrar a Clientes (lista y ficha) para cobrar
+  abonos de los fiados. No crea, edita ni exporta clientes (esas rutas siguen en `role:Dueno,Encargado`).
 
 Comprobar con `esDueno()`, `esEncargadoOSuperior()` o el middleware `role:`; nunca comparar strings sueltos en vistas.
 

@@ -48,9 +48,9 @@
             'regla' => 'Si el cliente tiene límite de crédito, el sistema no deja fiarle más de lo que le queda disponible.',
         ],
         [
-            'id' => 'abono', 'titulo' => 'Cobrar un abono', 'quien' => 'encargado', 'pantalla' => 'Ficha del cliente',
+            'id' => 'abono', 'titulo' => 'Cobrar un abono', 'quien' => 'todos', 'pantalla' => 'Ficha del cliente',
             'texto' => [
-                'Cuando el cliente paga lo que debe, todo o una parte, se registra en su ficha. Puede pagar en dólares o en bolívares; la deuda se descuenta en dólares con la tasa del día.',
+                'Cuando el cliente paga lo que debe, todo o una parte, búscalo en «Clientes», abre su ficha con el botón del billete y registra el abono ahí. Puede pagar en dólares o en bolívares; la deuda se descuenta en dólares con la tasa del día.',
             ],
             'regla' => 'El abono es efectivo que entra a la caja de hoy, por eso también necesita la caja abierta. No puede ser mayor a lo que se debe.',
         ],

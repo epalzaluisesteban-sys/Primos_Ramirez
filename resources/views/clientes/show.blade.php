@@ -81,7 +81,7 @@
                 @elseif($estadoCaja === 'cerrada')
                     <p class="aviso-ambar">
                         <x-icon name="lock" class="w-4 h-4 shrink-0 mt-0.5" />
-                        <span>La caja de hoy ya se cerró. Para recibir el abono, reábrela en <a href="{{ route('caja.index') }}" class="font-semibold underline">Caja</a> (botón "Reabrir caja").</span>
+                        <span>La caja de hoy ya se cerró. Para recibir el abono, un encargado puede reabrirla en <a href="{{ route('caja.index') }}" class="font-semibold underline">Caja</a> (botón "Reabrir caja").</span>
                     </p>
                 @else
                     <form action="{{ route('clientes.abonos.store', $cliente->id) }}" method="POST" class="space-y-4">

@@ -10,6 +10,8 @@
             ['label' => 'Ventas registradas', 'icon' => 'cart', 'route' => 'ventas.index', 'match' => ['ventas.index', 'ventas.edit', 'ventas.show', 'ventas.papelera'], 'ayuda' => 'Ver, imprimir, editar o eliminar ventas'],
             ['label' => 'Caja del día', 'icon' => 'banknote', 'route' => 'caja.index', 'match' => ['caja.*'], 'ayuda' => 'Abrir la caja en la mañana y cerrarla al final'],
         ]],
+        // Todos los roles: el obrero entra para cobrar los abonos de los fiados
+        ['label' => 'Clientes', 'icon' => 'users', 'route' => 'clientes.index', 'match' => ['clientes.*']],
     ];
 
     if ($usuarioNav->esEncargadoOSuperior()) {
@@ -20,7 +22,6 @@
             ['label' => 'Registrar pérdida', 'icon' => 'package-x', 'route' => 'mermas.index', 'match' => ['mermas.*'], 'ayuda' => 'Producto dañado, vencido o extraviado (resta del stock)'],
             ['label' => 'Categorías', 'icon' => 'tag', 'route' => 'categorias.index', 'match' => ['categorias.*'], 'ayuda' => 'Grupos de productos (frutas, verduras…)'],
         ]];
-        $menu[] = ['label' => 'Clientes', 'icon' => 'users', 'route' => 'clientes.index', 'match' => ['clientes.*']];
         // La tasa BCV no va aquí: se abre desde la insignia de la barra superior (escritorio y celular)
         $menu[] = ['label' => 'Reportes', 'icon' => 'chart-bar', 'match' => ['reportes.*', 'estadisticas.*', 'historial.*'], 'items' => [
             ['label' => 'Ganancias', 'icon' => 'chart-bar', 'route' => 'reportes.ganancias', 'match' => ['reportes.*'], 'ayuda' => 'Cuánto se ganó por producto y categoría'],

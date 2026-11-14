@@ -132,6 +132,50 @@ class CajaYCreditoTest extends TestCase
         $this->assertSame(20.0, $cliente->saldoPendiente());
     }
 
+    public function test_el_obrero_entra_a_clientes_y_cobra_un_abono_desde_la_ficha(): void
+    {
+        $cliente = $this->clienteQueDebe();
+        $this->abrirCaja();
+
+        // Ve la lista, pero sin crear, editar ni exportar
+        $this->actingAs($this->obrero)->get(route('clientes.index'))->assertOk()
+            ->assertSee(route('clientes.show', $cliente), false)
+            ->assertDontSee(route('clientes.create'), false)
+            ->assertDontSee(route('clientes.edit', $cliente), false)
+            ->assertDontSee(route('clientes.excel'), false);
+
+        $this->actingAs($this->obrero)->get(route('clientes.show', $cliente))->assertOk()
+            ->assertSee(route('clientes.abonos.store', $cliente), false);
+
+        $this->actingAs($this->obrero)
+            ->post(route('clientes.abonos.store', $cliente), ['monto' => 5])
+            ->assertRedirect(route('clientes.show', $cliente))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(15.0, $cliente->saldoPendiente());
+        $this->assertSame($this->obrero->id, $cliente->abonos()->first()->user_id);
+
+        // Crear, editar y exportar siguen siendo de encargado o dueño
+        $this->actingAs($this->obrero)->get(route('clientes.create'))->assertForbidden();
+        $this->actingAs($this->obrero)->get(route('clientes.edit', $cliente))->assertForbidden();
+        $this->actingAs($this->obrero)->put(route('clientes.update', $cliente), ['nombre' => 'Otro'])->assertForbidden();
+        $this->actingAs($this->obrero)->get(route('clientes.excel'))->assertForbidden();
+    }
+
+    public function test_el_obrero_tampoco_cobra_mas_de_lo_que_se_debe_ni_sin_caja(): void
+    {
+        $cliente = $this->clienteQueDebe();
+
+        $this->actingAs($this->obrero)->post(route('clientes.abonos.store', $cliente), ['monto' => 5])
+            ->assertSessionHasErrors('error');
+
+        $this->abrirCaja();
+        $this->actingAs($this->obrero)->post(route('clientes.abonos.store', $cliente), ['monto' => 25])
+            ->assertSessionHasErrors('error');
+
+        $this->assertSame(0, $cliente->abonos()->count());
+    }
+
     public function test_con_la_caja_abierta_si_se_registra_el_abono(): void
     {
         $encargado = User::factory()->create(['rol' => 'Encargado']);
