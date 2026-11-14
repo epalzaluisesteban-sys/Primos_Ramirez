@@ -256,6 +256,7 @@
             document.addEventListener('submit', function (e) {
                 const form = e.target;
                 if (form.hasAttribute && form.hasAttribute('data-confirm') && !form.dataset.confirmado) return; // el modal decide primero
+                if (e.defaultPrevented) return; // formularios que se envían por fetch (cliente nuevo en la venta)
                 iniciarBarra();
                 const boton = form.querySelector('button[type="submit"]');
                 if (boton && !boton.disabled) {
@@ -267,7 +268,8 @@
 
             document.addEventListener('click', function (e) {
                 const link = e.target.closest('a[href]');
-                if (!link || link.target === '_blank' || link.href.indexOf('javascript:') === 0 || e.metaKey || e.ctrlKey) return;
+                // defaultPrevented: enlaces que abren una ventana flotante en vez de cambiar de página
+                if (!link || e.defaultPrevented || link.target === '_blank' || link.href.indexOf('javascript:') === 0 || e.metaKey || e.ctrlKey) return;
                 if (link.origin !== window.location.origin) return;
                 iniciarBarra();
             });

@@ -55,7 +55,7 @@
             if (!$cajaCerrada) {
                 $acciones[] = ['Nueva venta', 'Contado o fiado, en dólares o bolívares', 'cart', route('ventas.create'), 'emerald'];
             }
-            $acciones[] = ['Ventas de hoy', 'Ver, imprimir o anular', 'printer', route('ventas.index', ['fecha_inicio' => now()->toDateString(), 'fecha_fin' => now()->toDateString()]), 'normal'];
+            $acciones[] = ['Ventas de hoy', 'Ver, imprimir o eliminar', 'printer', route('ventas.index', ['fecha_inicio' => now()->toDateString(), 'fecha_fin' => now()->toDateString()]), 'normal'];
             if ($cajaHoy) {
                 $acciones[] = $accionCaja;
             }
@@ -314,7 +314,7 @@
                                             {{ $v->tipo_pago === 'credito' ? 'Fiado' : 'Contado' }}
                                         </span>
                                         @if($v->anulada)
-                                            <span class="insignia-roja">Anulada</span>
+                                            <span class="insignia-roja">Eliminada</span>
                                         @endif
                                     </td>
                                     <td class="py-2.5 px-3 text-right font-bold text-green-700 dark:text-emerald-400"><x-precio :usd="$v->total" :ves="$v->total_ves" size="small" class="items-end" /></td>

@@ -7,7 +7,7 @@
         ['label' => 'Inicio', 'icon' => 'leaf', 'route' => 'dashboard', 'match' => ['dashboard']],
         ['label' => 'Ventas', 'icon' => 'cart', 'match' => ['ventas.*', 'caja.*'], 'items' => [
             ['label' => 'Nueva venta', 'icon' => 'plus', 'route' => 'ventas.create', 'match' => ['ventas.create'], 'ayuda' => 'Registrar lo que se le vende a un cliente'],
-            ['label' => 'Ventas registradas', 'icon' => 'cart', 'route' => 'ventas.index', 'match' => ['ventas.index', 'ventas.edit'], 'ayuda' => 'Ver, imprimir, editar o anular ventas'],
+            ['label' => 'Ventas registradas', 'icon' => 'cart', 'route' => 'ventas.index', 'match' => ['ventas.index', 'ventas.edit', 'ventas.show', 'ventas.papelera'], 'ayuda' => 'Ver, imprimir, editar o eliminar ventas'],
             ['label' => 'Caja del día', 'icon' => 'banknote', 'route' => 'caja.index', 'match' => ['caja.*'], 'ayuda' => 'Abrir la caja en la mañana y cerrarla al final'],
         ]],
     ];

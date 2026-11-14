@@ -36,6 +36,7 @@
             'id' => 'contado', 'titulo' => 'Vender de contado', 'quien' => 'todos', 'pantalla' => 'Nueva venta',
             'texto' => [
                 'Elige el producto, la cantidad y en qué moneda te pagan. Al registrar, el stock baja y el efectivo entra a la caja.',
+                'Si quieres, elige también el cliente para que la compra quede en su ficha. Si es nuevo, regístralo con «Cliente nuevo» sin salir de la venta.',
             ],
             'regla' => 'Lo que se vende por unidad, caja, atado o saco va sin decimales. Lo que se vende por kg, lb o litro acepta hasta 3 decimales.',
         ],
@@ -62,11 +63,12 @@
             'regla' => 'El stock nunca se cambia a mano sin motivo: cada movimiento queda en el kardex del producto.',
         ],
         [
-            'id' => 'anular', 'titulo' => 'Corregir o anular', 'quien' => 'encargado', 'pantalla' => 'Ventas',
+            'id' => 'anular', 'titulo' => 'Corregir o eliminar', 'quien' => 'encargado', 'pantalla' => 'Ventas',
             'texto' => [
-                'Una venta del día se puede editar o anular mientras la caja siga abierta. Al anularla, la mercancía vuelve al inventario.',
+                'En la lista de ventas, el ojo abre el detalle de cada venta. Una venta de hoy se puede editar o eliminar mientras la caja siga abierta.',
+                'Al eliminarla, la mercancía vuelve al inventario y la venta pasa a la Papelera. Si fue un error, desde ahí se restaura el mismo día.',
             ],
-            'regla' => 'Las ventas nunca se borran: se anulan con su motivo. Una venta anulada no cuenta en la caja, los reportes ni el saldo del cliente.',
+            'regla' => 'Una venta en la papelera no cuenta en la caja, los reportes ni el saldo del cliente, pero queda guardada con su motivo y quién la eliminó.',
         ],
         [
             'id' => 'cierre', 'titulo' => 'Cerrar la caja', 'quien' => 'todos', 'pantalla' => 'Caja',

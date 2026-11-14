@@ -46,6 +46,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('ventas/{venta}/pdf', [VentaController::class, 'descargarPDF'])->name('ventas.pdf');
     Route::get('ventas/{venta}/ticket', [VentaController::class, 'ticket'])->name('ventas.ticket');
     Route::get('ventas-exportar-excel', [VentaController::class, 'exportarExcel'])->name('ventas.excel');
+    Route::get('ventas/{venta}', [VentaController::class, 'show'])->whereNumber('venta')->name('ventas.show');
+
+    // Registrar un cliente sin salir de la venta (nombre, teléfono y cédula; el límite de crédito se pone en Clientes)
+    Route::post('clientes-rapido', [ClienteController::class, 'registroRapido'])->name('clientes.rapido');
 
     // Módulo de Perfil de Usuario
     Route::get('/perfil', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -77,10 +81,12 @@ Route::middleware(['auth'])->group(function () {
         // Reabrir la caja de hoy si se cerró por error (queda anotado en sus observaciones)
         Route::put('/caja/{caja}/reabrir', [CajaController::class, 'reabrir'])->name('caja.reabrir');
 
-        // Edición y anulación de ventas recientes (mismo día, no anuladas)
+        // Editar o mandar a la papelera ventas de hoy (con la caja abierta), y restaurarlas
         Route::get('ventas/{venta}/editar', [VentaController::class, 'edit'])->name('ventas.edit');
         Route::put('ventas/{venta}', [VentaController::class, 'update'])->name('ventas.update');
         Route::put('ventas/{venta}/anular', [VentaController::class, 'anular'])->name('ventas.anular');
+        Route::get('ventas-papelera', [VentaController::class, 'papelera'])->name('ventas.papelera');
+        Route::put('ventas/{venta}/restaurar', [VentaController::class, 'restaurar'])->name('ventas.restaurar');
 
         // Gestión de Proveedores
         Route::patch('proveedores/{proveedor}/activo', [ProveedorController::class, 'alternarActivo'])->name('proveedores.activo');

@@ -147,6 +147,7 @@ class UserController extends Controller
             }
         }
 
-        return false;
+        // También quien mandó ventas a la papelera
+        return Venta::where('anulada_por', $usuario->id)->exists();
     }
 }

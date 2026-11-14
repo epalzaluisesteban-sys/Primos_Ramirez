@@ -41,7 +41,7 @@ class ActividadService
                 'tipo' => 'Venta',
                 'icono' => 'cart',
                 'color' => 'emerald',
-                'texto' => $v->anulada ? "Venta #{$v->id} anulada" : "Venta #{$v->id} registrada",
+                'texto' => $v->anulada ? "Venta #{$v->id} enviada a la papelera" : "Venta #{$v->id} registrada",
                 'monto' => (float) $v->total,
                 'usuario' => $v->usuario->name ?? 'Sistema',
                 'fecha' => $v->fecha,

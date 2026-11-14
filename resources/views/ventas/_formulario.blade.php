@@ -66,24 +66,32 @@
             </p>
         </div>
 
-        <div id="cliente-wrapper" class="{{ $esCredito ? '' : 'hidden' }} mt-4">
-            <label class="block text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase mb-1.5">Cliente</label>
-            <select name="cliente_id" id="cliente_id" class="campo">
-                <option value="">-- Seleccionar cliente --</option>
-                @foreach($clientes as $cli)
-                    @php
-                        $deuda = $cli->saldoPendiente();
-                        // Al editar una venta a crédito de este cliente, su monto actual se libera (igual que en verificarLimiteCredito)
-                        $liberado = ($esEdicion && $venta->tipo_pago === 'credito' && (int) $venta->cliente_id === $cli->id) ? (float) $venta->total : 0;
-                        $disponible = $cli->creditoDisponible($deuda - $liberado);
-                    @endphp
-                    <option value="{{ $cli->id }}" @selected((int) $clienteActual === $cli->id)
-                            data-deuda="{{ $deuda }}" data-disponible="{{ $disponible ?? '' }}">
-                        {{ $cli->nombre }}@if($deuda > 0) (Debe: ${{ number_format($deuda, 2) }})@endif
-                        @if($disponible !== null) — Disponible: ${{ number_format($disponible, 2) }}@endif
-                    </option>
-                @endforeach
-            </select>
+        <div id="cliente-wrapper" class="mt-4">
+            <label for="cliente_id" class="block text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase mb-1.5">
+                Cliente <span id="cliente-opcional" class="normal-case font-normal">(Opcional)</span>
+            </label>
+            <div class="flex gap-2">
+                <select name="cliente_id" id="cliente_id" class="campo min-w-0 flex-1">
+                    <option value="">Sin cliente (mostrador)</option>
+                    @foreach($clientes as $cli)
+                        @php
+                            $deuda = $cli->saldoPendiente();
+                            // Al editar una venta a crédito de este cliente, su monto actual se libera (igual que en verificarLimiteCredito)
+                            $liberado = ($esEdicion && $venta->tipo_pago === 'credito' && (int) $venta->cliente_id === $cli->id) ? (float) $venta->total : 0;
+                            $disponible = $cli->creditoDisponible($deuda - $liberado);
+                        @endphp
+                        <option value="{{ $cli->id }}" @selected((int) $clienteActual === $cli->id)
+                                data-deuda="{{ $deuda }}" data-disponible="{{ $disponible ?? '' }}">
+                            {{ $cli->nombre }}@if($deuda > 0) (Debe: ${{ number_format($deuda, 2) }})@endif
+                            @if($disponible !== null) — Disponible: ${{ number_format($disponible, 2) }}@endif
+                        </option>
+                    @endforeach
+                </select>
+                <button type="button" id="btn-cliente-nuevo" class="btn-secundario shrink-0 whitespace-nowrap">
+                    <x-icon name="plus" class="w-4 h-4" /> <span class="hidden sm:inline">Cliente nuevo</span><span class="sm:hidden">Nuevo</span>
+                </button>
+            </div>
+            <p id="cliente-ayuda" class="ayuda-campo"></p>
 
             {{-- Crédito del cliente elegido; se actualiza con el total de la venta --}}
             <div id="credito-info" class="hidden mt-2 caja-suave px-3 py-2.5 text-sm">
@@ -98,9 +106,6 @@
                     </p>
                 </div>
             </div>
-            <p class="text-[11px] text-stone-400 dark:text-stone-500 mt-1">
-                ¿Cliente nuevo? <a href="{{ route('clientes.create') }}" class="text-orange-700 dark:text-orange-400 font-semibold hover:underline">Regístralo primero</a> y vuelve a esta pantalla.
-            </p>
         </div>
     </div>
 
@@ -119,6 +124,58 @@
         <x-icon name="check" class="w-5 h-5" /> {{ $textoBoton }}
     </button>
 </form>
+
+{{-- Ventana para registrar un cliente sin salir de la venta. Va fuera del formulario de la venta
+     (no se pueden anidar formularios) y se envía por fetch a clientes.rapido. --}}
+<div id="modal-cliente" class="hidden fixed inset-0 z-[190] flex items-center justify-center p-4 no-print" role="dialog" aria-modal="true" aria-labelledby="modal-cliente-titulo">
+    <div class="absolute inset-0 bg-stone-900/50 dark:bg-black/60" data-cerrar-cliente></div>
+    <div class="tarjeta relative shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between gap-3 mb-4">
+            <div>
+                <h2 id="modal-cliente-titulo" class="titulo-tarjeta">Cliente nuevo</h2>
+                <p class="ayuda-campo">Queda elegido en esta venta. El límite de crédito lo pone un encargado en Clientes.</p>
+            </div>
+            <button type="button" data-cerrar-cliente class="btn-icono-gris" title="Cerrar" aria-label="Cerrar"><x-icon name="x" class="w-4 h-4" /></button>
+        </div>
+
+        <form id="form-cliente-rapido" action="{{ route('clientes.rapido') }}" method="POST" class="space-y-4" novalidate>
+            @csrf
+            <div>
+                <label class="etiqueta" for="rapido-nombre">Nombre del cliente</label>
+                <input id="rapido-nombre" type="text" name="nombre" required maxlength="255" placeholder="Ej. María González" class="campo" autocomplete="off">
+                <p data-error="nombre" class="error-campo hidden"></p>
+            </div>
+
+            <div>
+                <label class="etiqueta" for="rapido-telefono">Teléfono (Opcional)</label>
+                <input id="rapido-telefono" type="tel" name="telefono" inputmode="numeric" maxlength="11" pattern="0[0-9]{10}"
+                       oninput="soloDigitos(this, 11, true)" placeholder="04121234567" class="campo" autocomplete="off">
+                <p class="ayuda-campo">Solo números, 11 dígitos (ej. 04121234567).</p>
+                <p data-error="telefono" class="error-campo hidden"></p>
+            </div>
+
+            <div>
+                <label class="etiqueta" for="rapido-documento">Cédula o RIF (Opcional)</label>
+                <div class="flex gap-2">
+                    <select name="documento_tipo" aria-label="Tipo de documento" class="campo w-20 shrink-0">
+                        @foreach(\App\Support\Contacto::TIPOS_DOCUMENTO as $tipo)
+                            <option value="{{ $tipo }}">{{ $tipo }}</option>
+                        @endforeach
+                    </select>
+                    <input id="rapido-documento" type="text" name="documento_numero" inputmode="numeric" maxlength="9"
+                           oninput="soloDigitos(this, 9)" placeholder="12345678" class="campo" autocomplete="off">
+                </div>
+                <p data-error="documento_tipo" class="error-campo hidden"></p>
+                <p data-error="documento_numero" class="error-campo hidden"></p>
+            </div>
+
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
+                <button type="button" data-cerrar-cliente class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn-primario"><x-icon name="check" class="w-4 h-4" /> Guardar cliente</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 @push('scripts')
     <script>
@@ -150,7 +207,7 @@
                 const select = document.getElementById('cliente_id');
                 const opcion = select.options[select.selectedIndex];
                 const info = document.getElementById('credito-info');
-                if (!opcion || !opcion.value) {
+                if (!opcion || !opcion.value || !esCredito()) {
                     info.classList.add('hidden');
                     return;
                 }
@@ -169,12 +226,90 @@
                 document.getElementById('credito-aviso').classList.toggle('hidden', !supera);
             }
 
+            function esCredito() {
+                return document.querySelector('input[name="tipo_pago"]:checked').value === 'credito';
+            }
+
+            // En fiado el cliente es obligatorio; en contado es opcional y solo deja la venta en su ficha.
             function alternarCliente() {
-                const credito = document.querySelector('input[name="tipo_pago"]:checked').value === 'credito';
-                document.getElementById('cliente-wrapper').classList.toggle('hidden', !credito);
+                const credito = esCredito();
                 document.getElementById('moneda-wrapper').classList.toggle('hidden', credito);
                 document.getElementById('cliente_id').required = credito;
+                document.getElementById('cliente-opcional').classList.toggle('hidden', credito);
+                document.getElementById('cliente_id').options[0].textContent = credito ? 'Selecciona el cliente…' : 'Sin cliente (mostrador)';
+                document.getElementById('cliente-ayuda').textContent = credito
+                    ? 'A quién se le fía. Lo que debe aparece en su ficha de Clientes.'
+                    : 'Si lo eliges, la compra queda en su ficha de Clientes.';
+                calcularTotales();
             }
+
+            // ---- Cliente nuevo sin salir de la venta ----
+            const modalCliente = document.getElementById('modal-cliente');
+            const formCliente = document.getElementById('form-cliente-rapido');
+
+            function abrirModalCliente() {
+                modalCliente.classList.remove('hidden');
+                document.getElementById('rapido-nombre').focus();
+            }
+
+            function cerrarModalCliente() {
+                modalCliente.classList.add('hidden');
+                document.getElementById('btn-cliente-nuevo').focus();
+            }
+
+            function mostrarErroresCliente(errores) {
+                formCliente.querySelectorAll('[data-error]').forEach(function (p) {
+                    const mensaje = (errores[p.dataset.error] || [])[0];
+                    p.textContent = mensaje || '';
+                    p.classList.toggle('hidden', !mensaje);
+                });
+            }
+
+            document.getElementById('btn-cliente-nuevo').addEventListener('click', abrirModalCliente);
+            modalCliente.querySelectorAll('[data-cerrar-cliente]').forEach(function (el) { el.addEventListener('click', cerrarModalCliente); });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && !modalCliente.classList.contains('hidden')) cerrarModalCliente();
+            });
+
+            formCliente.addEventListener('submit', async function (e) {
+                // preventDefault antes que el loader del layout: así no deshabilita el botón ni deja la barra cargando
+                e.preventDefault();
+                const boton = formCliente.querySelector('button[type="submit"]');
+                boton.disabled = true;
+
+                try {
+                    const respuesta = await fetch(formCliente.action, {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: new FormData(formCliente),
+                    });
+                    const datos = await respuesta.json();
+
+                    if (respuesta.status === 422) {
+                        mostrarErroresCliente(datos.errors || {});
+                        return;
+                    }
+                    if (!respuesta.ok) {
+                        throw new Error();
+                    }
+
+                    const select = document.getElementById('cliente_id');
+                    const opcion = new Option(datos.nombre, datos.id, true, true);
+                    opcion.dataset.deuda = '0';
+                    opcion.dataset.disponible = '';
+                    select.add(opcion);
+                    calcularTotales();
+
+                    formCliente.reset();
+                    mostrarErroresCliente({});
+                    cerrarModalCliente();
+                    mostrarToast('Cliente ' + datos.nombre + ' registrado y elegido en esta venta.', 'success');
+                } catch (error) {
+                    mostrarToast('No se pudo guardar el cliente. Revisa la conexión e inténtalo de nuevo.', 'error');
+                } finally {
+                    boton.disabled = false;
+                }
+            });
 
             document.getElementById('btn-agregar-fila').addEventListener('click', function () {
                 contenedor.insertAdjacentHTML('beforeend', plantilla.replaceAll('__I__', indiceFila++));

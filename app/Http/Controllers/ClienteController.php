@@ -11,6 +11,7 @@ use App\Support\Contacto;
 use App\Support\Moneda;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ClienteController extends Controller
@@ -125,6 +126,26 @@ class ClienteController extends Controller
         Cliente::create($datos);
 
         return redirect()->route('clientes.index')->with('success', 'Cliente registrado exitosamente.');
+    }
+
+    /**
+     * Alta desde la ventana de "Nueva venta" (todos los roles): solo nombre, teléfono y cédula/RIF.
+     * Responde JSON para que el cliente quede elegido en la venta sin recargar la página.
+     */
+    public function registroRapido(Request $request)
+    {
+        $contacto = $this->validarCliente($request);
+
+        if ($contacto['rif'] && $existente = Cliente::where('rif', $contacto['rif'])->first()) {
+            throw ValidationException::withMessages([
+                'documento_numero' => "Ya hay un cliente con esa cédula o RIF: {$existente->nombre}."
+                    . ($existente->activo ? ' Elígelo en la lista.' : ' Está desactivado; pide a un encargado que lo active en Clientes.'),
+            ]);
+        }
+
+        $cliente = Cliente::create(['nombre' => $request->input('nombre')] + $contacto);
+
+        return response()->json(['id' => $cliente->id, 'nombre' => $cliente->nombre], 201);
     }
 
     public function edit(Cliente $cliente)

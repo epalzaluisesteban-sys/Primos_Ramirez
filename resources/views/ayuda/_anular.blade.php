@@ -12,7 +12,7 @@
     </div>
     <div class="grid sm:grid-cols-2 gap-4">
         <div>
-            <label for="guia-anular-venta" class="etiqueta">Venta a anular</label>
+            <label for="guia-anular-venta" class="etiqueta">Venta a eliminar</label>
             <select id="guia-anular-venta" data-campo="venta" class="campo"></select>
         </div>
         <div>
@@ -21,7 +21,7 @@
         </div>
     </div>
     <div class="flex justify-end">
-        <button type="button" data-accion="anular" class="btn-peligro"><x-icon name="ban" class="w-4 h-4" /> Anular venta</button>
+        <button type="button" data-accion="anular" class="btn-peligro"><x-icon name="trash" class="w-4 h-4" /> Eliminar venta</button>
     </div>
     <div data-mensaje data-zona="mensaje" hidden></div>
 </div>

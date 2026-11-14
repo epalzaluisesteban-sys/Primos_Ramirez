@@ -58,6 +58,11 @@ Comprobar con `esDueno()`, `esEncargadoOSuperior()` o el middleware `role:`; nun
 
 - **Moneda base: USD.** Bs. = USD × tasa BCV. Cada venta guarda `tasa_cambio` y `total_ves`; cada abono guarda moneda, monto en esa moneda y tasa.
 - **Ventas anuladas** no cuentan en caja, reportes, estadísticas, kardex ni saldo de clientes. Las ventas nunca se borran.
+  En la interfaz "Eliminar venta" = anularla (`ventas.anular`, guarda `anulada_por`) y la venta pasa a la **Papelera**
+  (`ventas.papelera`, Encargado o Dueño). Restaurar (`Venta::puedeRestaurarse()`) solo si es de hoy con la caja abierta,
+  vuelve a descontar el stock y revisa el límite de crédito. El listado de ventas y su CSV no muestran las anuladas.
+- El cliente es opcional en ventas de contado (queda en su ficha, no suma deuda) y obligatorio en fiado. Desde la venta
+  se registra un cliente nuevo por fetch (`clientes.rapido`, todos los roles, sin límite de crédito).
 - **Caja diaria:** efectivo esperado = fondo inicial + ventas de **contado** + **abonos** del día (por moneda).
   Solo se registran ventas y abonos con la caja de **hoy abierta** (`CierreCaja::estaAbierta()`; si no, se manda a abrirla).
   Con la caja del día **cerrada** no se registran ventas ni abonos y no se editan/anulan ventas (`CierreCaja::estaCerrada()`).

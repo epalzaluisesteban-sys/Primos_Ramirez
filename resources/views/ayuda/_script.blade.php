@@ -290,8 +290,8 @@
             pintar: pintarAyudaCantidad,
         },
         'anular': {
-            practica: 'Elige una venta, escribe el motivo y presiona «Anular venta».',
-            // La venta equivocada que se anula en este capítulo
+            practica: 'Elige una venta, escribe el motivo y presiona «Eliminar venta».',
+            // La venta equivocada que se elimina en este capítulo
             preparar(e) {
                 registrarVenta(e, { producto: 'tomate', cantidad: '10', tipoPago: 'contado', moneda: 'USD' });
             },
@@ -299,21 +299,21 @@
                 ['decir', 'Alguien registró la venta #3 con 10 kg de tomate, pero eran 1 kg.'],
                 ['ver', 'ventas', 'Las ventas del día aparecen en la lista de Ventas.'],
                 ['elegir', 'venta', '3', 'Elige la venta equivocada.'],
-                ['escribir', 'motivo', 'Eran 1 kg, no 10', 'Escribe por qué se anula.'],
-                ['pulsar', 'anular', 'Presiona «Anular venta».'],
-                ['decir', 'Los 10 kg volvieron al inventario y la venta queda marcada como anulada, no se borra. Después se registra la venta correcta.'],
+                ['escribir', 'motivo', 'Eran 1 kg, no 10', 'Escribe por qué se elimina.'],
+                ['pulsar', 'anular', 'Presiona «Eliminar venta».'],
+                ['decir', 'Los 10 kg volvieron al inventario y la venta pasó a la Papelera con su motivo. Después se registra la venta correcta.'],
             ],
             acciones: {
                 anular(e, v) {
                     const venta = e.ventas.find(x => x.n === parseInt(v.venta, 10));
-                    if (!venta) return resultado(false, 'Elige la venta que quieres anular.');
-                    if (venta.anulada) return resultado(false, 'Esa venta ya está anulada.');
-                    if (e.caja !== 'abierta') return resultado(false, 'Solo se pueden anular ventas del día mientras la caja siga abierta.');
+                    if (!venta) return resultado(false, 'Elige la venta que quieres eliminar.');
+                    if (venta.anulada) return resultado(false, 'Esa venta ya está en la papelera.');
+                    if (e.caja !== 'abierta') return resultado(false, 'Solo se pueden eliminar ventas de hoy mientras la caja siga abierta.');
                     const p = e.productos[venta.producto];
                     p.stock = redondear(p.stock + venta.cantidad, 3);
                     if (venta.tipo === 'credito') e.cliente.saldo = redondear(e.cliente.saldo - venta.total);
                     venta.anulada = true;
-                    return resultado(true, 'Venta #' + venta.n + ' anulada. Volvieron ' + cantidad(venta.cantidad) + ' ' + unidadDe(p, venta.cantidad) + ' de ' + p.nombre.toLowerCase() + ' al inventario.');
+                    return resultado(true, 'Venta #' + venta.n + ' enviada a la papelera. Volvieron ' + cantidad(venta.cantidad) + ' ' + unidadDe(p, venta.cantidad) + ' de ' + p.nombre.toLowerCase() + ' al inventario.');
                 },
             },
             pintar(e, c) {
@@ -333,7 +333,7 @@
                     total.textContent = usd(v.total);
                     const estadoCelda = fila.insertCell();
                     estadoCelda.className = 'text-center';
-                    estadoCelda.innerHTML = v.anulada ? '<span class="insignia-roja">Anulada</span>' : '<span class="insignia-verde">Vigente</span>';
+                    estadoCelda.innerHTML = v.anulada ? '<span class="insignia-roja">En la papelera</span>' : '<span class="insignia-verde">Vigente</span>';
                 });
                 const select = campo(c, 'venta');
                 const elegida = select.value;
@@ -348,7 +348,7 @@
             practica: 'Escribe cuánto efectivo contaste y presiona «Cerrar caja». Prueba con montos distintos al esperado.',
             guion: [
                 ['decir', 'Fin del día. El sistema ya sabe cuánto efectivo debería haber en el cajón.'],
-                ['ver', 'resumen', 'Debería haber = fondo + ventas de contado + abonos. La venta fiada y la anulada no cuentan.'],
+                ['ver', 'resumen', 'Debería haber = fondo + ventas de contado + abonos. La venta fiada y la eliminada no cuentan.'],
                 ['escribir', 'realUsd', '25', 'Cuenta los dólares del cajón y escribe cuánto hay.'],
                 ['escribir', 'realVes', e => resumenCaja(e).esperadoVes.toFixed(2), 'Y los bolívares.'],
                 ['escribir', 'observaciones', 'Faltó $1 por un vuelto mal dado', 'Si falta o sobra, explícalo aquí.'],
@@ -385,7 +385,7 @@
         'revisar': {
             guion: [
                 ['decir', 'Con todo lo del día, el sistema arma los reportes.'],
-                ['ver', 'kardex', 'El kardex del tomate: cada entrada y salida con lo que queda. La venta anulada no aparece.'],
+                ['ver', 'kardex', 'El kardex del tomate: cada entrada y salida con lo que queda. La venta eliminada no aparece.'],
                 ['ver', 'ganancia', 'Ganancia = lo vendido menos lo que costó. El tomate costó $1.20 el kg.'],
                 ['ver', 'sin-costo', 'El aguacate no tiene compras registradas: su venta no entra en la ganancia y se avisa aparte.'],
                 ['ver', 'lugares', 'Esto lo encuentras en Reportes, en Historial y en el kardex de cada producto.'],

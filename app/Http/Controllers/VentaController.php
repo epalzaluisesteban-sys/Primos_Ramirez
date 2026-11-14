@@ -7,9 +7,11 @@ use App\Models\Venta;
 use App\Models\Producto;
 use App\Models\DetalleVenta;
 use App\Models\Cliente;
+use App\Support\Cantidad;
 use App\Support\Moneda;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -20,12 +22,42 @@ class VentaController extends Controller
     {
         $ventas = $this->ventasFiltradas($request);
 
-        // Suma total de las ventas filtradas (no cuenta las anuladas)
-        $totalPeriodo = $ventas->where('anulada', false)->sum('total');
+        $totalPeriodo = $ventas->sum('total');
+        $totalPeriodoVes = $ventas->sum(fn ($v) => $v->total_ves ?? Moneda::aVes($v->total));
+        $enPapelera = Venta::where('anulada', true)->count();
 
-        $totalPeriodoVes = $ventas->where('anulada', false)->sum(fn ($v) => $v->total_ves ?? Moneda::aVes($v->total));
+        return view('ventas.index', compact('ventas', 'totalPeriodo', 'totalPeriodoVes', 'enPapelera'));
+    }
 
-        return view('ventas.index', compact('ventas', 'totalPeriodo', 'totalPeriodoVes'));
+    /**
+     * Detalle de una venta. El listado lo pide por fetch y lo muestra en la ventana flotante;
+     * abierto directo (sin JS o en otra pestaña) se ve como página.
+     */
+    public function show(Request $request, Venta $venta)
+    {
+        // Las ventas de la papelera solo las ven quienes pueden eliminarlas o restaurarlas
+        if ($venta->anulada && !$request->user()->esEncargadoOSuperior()) {
+            abort(403);
+        }
+
+        $venta->load(['usuario', 'cliente', 'eliminadaPor', 'detalles.producto']);
+
+        if ($request->ajax()) {
+            return view('ventas._detalle', compact('venta'));
+        }
+
+        return view('ventas.show', compact('venta'));
+    }
+
+    // Ventas eliminadas: no cuentan en caja, reportes, kardex ni saldo de clientes.
+    public function papelera()
+    {
+        $ventas = Venta::with(['usuario', 'cliente', 'eliminadaPor', 'detalles'])
+            ->where('anulada', true)
+            ->latest('anulada_at')
+            ->get();
+
+        return view('ventas.papelera', compact('ventas'));
     }
 
     // Mensaje cuando la caja del día ya se cerró: lo que entre después no saldría en el cuadre.
@@ -34,7 +66,9 @@ class VentaController extends Controller
     // Mensaje cuando todavía no se abrió la caja del día: la venta no tendría cuadre.
     private const CAJA_SIN_ABRIR = 'Primero abre la caja del día: escribe el fondo inicial y pulsa "Abrir Caja del Día". Después podrás registrar ventas.';
 
-    private const NO_EDITABLE = 'Solo se pueden editar o anular ventas del día, no anuladas, y mientras la caja de ese día siga abierta.';
+    private const NO_EDITABLE = 'Solo se pueden editar o eliminar ventas de hoy y mientras la caja de hoy siga abierta.';
+
+    private const NO_RESTAURABLE = 'Solo se puede restaurar una venta de hoy y con la caja de hoy abierta. Las de otros días se quedan en la papelera porque su caja ya se cuadró.';
 
     public function create()
     {
@@ -143,9 +177,8 @@ class VentaController extends Controller
     }
 
     /**
-     * Anula una venta reciente: devuelve el stock de cada línea al
-     * inventario y marca la venta como anulada (no se elimina, para
-     * conservar el historial y la numeración de transacciones).
+     * Manda una venta de hoy a la papelera: devuelve el stock y la marca como anulada, así deja de
+     * contar en caja, reportes, kardex y saldo del cliente. No se borra de la base de datos.
      */
     public function anular(Request $request, Venta $venta)
     {
@@ -166,14 +199,66 @@ class VentaController extends Controller
                 'anulada' => true,
                 'anulada_at' => now(),
                 'motivo_anulacion' => $request->motivo_anulacion,
+                'anulada_por' => $request->user()->id,
             ]);
 
             DB::commit();
 
-            return redirect()->route('ventas.index')->with('success', 'Venta #' . $venta->id . ' anulada. El stock fue devuelto al inventario.');
+            return redirect()->route('ventas.index')->with('success', 'Venta #' . $venta->id . ' enviada a la papelera. La mercancía volvió al inventario.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Saca una venta de la papelera: vuelve a descontar el stock (si todavía alcanza) y a contar
+     * en la caja de hoy y, si es fiada, en el saldo del cliente.
+     */
+    public function restaurar(Venta $venta)
+    {
+        if (!$venta->puedeRestaurarse()) {
+            return redirect()->route('ventas.papelera')->withErrors(['error' => self::NO_RESTAURABLE]);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $venta->load('detalles');
+
+            foreach ($venta->detalles as $detalle) {
+                $producto = Producto::lockForUpdate()->findOrFail($detalle->producto_id);
+
+                if ($producto->stock < $detalle->cantidad) {
+                    throw new \Exception(sprintf(
+                        'No se puede restaurar la venta #%d: quedan %s de %s y la venta lleva %s. Registra una compra o un ajuste primero.',
+                        $venta->id,
+                        Cantidad::formato($producto->stock),
+                        $producto->nombre,
+                        Cantidad::formato($detalle->cantidad)
+                    ));
+                }
+
+                $producto->decrement('stock', $detalle->cantidad);
+            }
+
+            if ($venta->tipo_pago === 'credito') {
+                $this->verificarLimiteCredito($venta->cliente_id, (float) $venta->total);
+            }
+
+            $venta->update([
+                'anulada' => false,
+                'anulada_at' => null,
+                'motivo_anulacion' => null,
+                'anulada_por' => null,
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('ventas.index')->with('success', 'Venta #' . $venta->id . ' restaurada. Se volvió a descontar la mercancía del inventario.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->route('ventas.papelera')->withErrors(['error' => $e->getMessage()]);
         }
     }
 
@@ -202,7 +287,7 @@ class VentaController extends Controller
     {
         $ventas = $this->ventasFiltradas($request);
         return $this->descargarCsv('ventas_' . now()->format('Y-m-d_His') . '.csv', function (callable $fila) use ($ventas) {
-            $fila(['N° Transaccion', 'Fecha', 'Atendido Por', 'Tipo de Pago', 'Cliente', 'Productos', 'Estado', 'Total $', 'Total Bs.', 'Tasa BCV', 'Cobrado en']);
+            $fila(['N° Transaccion', 'Fecha', 'Atendido Por', 'Tipo de Pago', 'Cliente', 'Productos', 'Editada', 'Total $', 'Total Bs.', 'Tasa BCV', 'Cobrado en']);
 
             foreach ($ventas as $v) {
                 $productos = $v->detalles->map(function ($d) {
@@ -216,7 +301,7 @@ class VentaController extends Controller
                     $v->tipo_pago === 'credito' ? 'Fiado' : 'Contado',
                     $v->cliente->nombre ?? '',
                     $productos,
-                    $v->anulada ? 'Anulada' : 'Activa',
+                    $v->editada ? 'Sí' : 'No',
                     number_format($v->total, 2, '.', ''),
                     $v->total_ves !== null ? number_format($v->total_ves, 2, '.', '') : '',
                     $v->tasa_cambio !== null ? number_format($v->tasa_cambio, 4, '.', '') : '',
@@ -227,9 +312,11 @@ class VentaController extends Controller
         });
     }
 
+    // Ventas del listado y del CSV: las de la papelera no salen aquí.
     private function ventasFiltradas(Request $request)
     {
         return Venta::with(['usuario', 'cliente', 'detalles.producto'])
+            ->where('anulada', false)
             ->when($request->filled('fecha_inicio'), fn ($q) => $q->whereDate('created_at', '>=', $request->fecha_inicio))
             ->when($request->filled('fecha_fin'), fn ($q) => $q->whereDate('created_at', '<=', $request->fecha_fin))
             ->latest()
@@ -244,7 +331,7 @@ class VentaController extends Controller
             'productos.*.cantidad' => 'required|numeric|min:0.001',
             'tipo_pago' => 'nullable|in:contado,credito',
             'moneda_pago' => 'nullable|in:USD,VES',
-            'cliente_id' => 'nullable|exists:clientes,id',
+            'cliente_id' => ['nullable', Rule::exists('clientes', 'id')->where('activo', true)],
         ]);
 
         if ($request->tipo_pago === 'credito' && !$request->cliente_id) {
@@ -265,8 +352,9 @@ class VentaController extends Controller
             ]);
         }
 
+        // El cliente es opcional en contado (queda en su ficha) y obligatorio en fiado (validarVenta)
         return [
-            'cliente_id' => $credito ? $request->cliente_id : null,
+            'cliente_id' => $request->cliente_id ?: null,
             'tipo_pago' => $request->tipo_pago ?? 'contado',
             'moneda_pago' => $moneda,
         ];
