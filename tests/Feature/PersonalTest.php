@@ -114,4 +114,14 @@ class PersonalTest extends TestCase
             ->assertOk()
             ->assertSee('Abrir y cerrar caja');
     }
+
+    public function test_el_rol_dueno_se_muestra_con_enie(): void
+    {
+        $respuesta = $this->actingAs($this->dueno)->get(route('profile.edit'));
+
+        $respuesta->assertOk()->assertSee('Dueño');
+        $this->assertStringNotContainsString('>Dueno<', $respuesta->getContent());
+        $this->assertStringNotContainsString('· Dueno', $respuesta->getContent());
+        $this->assertSame('Dueno', $this->dueno->fresh()->rol);
+    }
 }

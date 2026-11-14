@@ -18,7 +18,7 @@
                 @endif
                 <div>
                     <h2 class="titulo-tarjeta text-lg">{{ $user->name }}</h2>
-                    <p class="text-xs text-stone-500 font-medium dark:text-stone-400">Rol asignado: <span class="text-emerald-800 font-bold uppercase dark:text-emerald-400">{{ $user->rol }}</span></p>
+                    <p class="text-xs text-stone-500 font-medium dark:text-stone-400">Rol asignado: <span class="text-emerald-800 font-bold uppercase dark:text-emerald-400">{{ $user->rolTexto() }}</span></p>
                 </div>
             </div>
 

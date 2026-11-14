@@ -82,6 +82,12 @@ class User extends Authenticatable
         return in_array($this->rol, $roles);
     }
 
+    // El rol se guarda sin tilde ('Dueno'); para mostrarlo se escribe con ñ.
+    public function rolTexto(): string
+    {
+        return $this->rol === 'Dueno' ? 'Dueño' : $this->rol;
+    }
+
     public function nivelLabel(): string
     {
         return match ($this->rol) {

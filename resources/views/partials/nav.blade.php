@@ -155,7 +155,7 @@
                 <div data-dropdown-menu class="hidden absolute right-0 mt-2 w-52 menu-desplegable">
                     <div class="px-4 py-2.5 border-b border-stone-200 dark:border-stone-700">
                         <p class="text-[11px] text-stone-500 dark:text-stone-400 uppercase tracking-wide">Sesión iniciada como</p>
-                        <p class="text-sm font-bold text-stone-800 dark:text-stone-100">{{ auth()->user()->rol }}</p>
+                        <p class="text-sm font-bold text-stone-800 dark:text-stone-100">{{ auth()->user()->rolTexto() }}</p>
                     </div>
                     <a href="{{ route('profile.edit') }}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-600 dark:text-stone-300 hover:bg-stone-50/50 dark:hover:bg-stone-700/50">
                         <x-icon name="user-circle" class="w-4 h-4 text-stone-500" /> Editar mi perfil
@@ -224,7 +224,7 @@
         <div class="shrink-0 border-t border-stone-200 dark:border-stone-700 px-3 py-3 space-y-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold text-stone-700 hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-stone-800">
                 <x-icon name="user-circle" class="w-5 h-5 shrink-0 opacity-70" />
-                <span class="min-w-0 truncate">{{ $usuarioNav->name }} <span class="font-normal text-stone-500 dark:text-stone-400">· {{ $usuarioNav->rol }}</span></span>
+                <span class="min-w-0 truncate">{{ $usuarioNav->name }} <span class="font-normal text-stone-500 dark:text-stone-400">· {{ $usuarioNav->rolTexto() }}</span></span>
             </a>
             <a href="{{ route('ayuda.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold {{ request()->routeIs('ayuda.*') ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' : 'text-stone-700 hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-stone-800' }}">
                 <x-icon name="ayuda" class="w-5 h-5 shrink-0 opacity-70" /> Cómo usar el sistema
