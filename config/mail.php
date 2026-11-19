@@ -70,6 +70,11 @@ return [
             'path' => env('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -bs -i'),
         ],
 
+        // Envío por la API de Brevo (HTTPS): Render gratis no deja salir correo por SMTP. Se registra en AppServiceProvider.
+        'brevo' => [
+            'transport' => 'brevo',
+        ],
+
         'log' => [
             'transport' => 'log',
             'channel' => env('MAIL_LOG_CHANNEL'),

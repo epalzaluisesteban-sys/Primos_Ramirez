@@ -5,6 +5,9 @@ namespace App\Providers;
 use App\Models\CierreCaja;
 use App\Models\Producto;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Mail;
+use Symfony\Component\Mailer\Bridge\Brevo\Transport\BrevoTransportFactory;
+use Symfony\Component\Mailer\Transport\Dsn;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL; // <-- 1. AGREGA ESTA LÍNEA AQUÍ ARRIBA
@@ -24,6 +27,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Mail::extend('brevo', fn () => (new BrevoTransportFactory)->create(
+            new Dsn('brevo+api', 'default', config('services.brevo.key'))
+        ));
        
 // HTTPS solo en producción; en local (artisan serve) se usa http
         // @usd($x) -> $1,234.50 | @ves($x) -> Bs. 1.234,50 | @bs($usd) -> equivalente en Bs. a la tasa BCV vigente

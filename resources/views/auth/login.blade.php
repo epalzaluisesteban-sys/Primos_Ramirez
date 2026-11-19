@@ -29,7 +29,10 @@
                         <label for="email" class="etiqueta">Correo electrónico</label>
                         <input id="email" name="email" type="email" required autocomplete="username" class="campo" placeholder="usuario@primosramirez.com" value="{{ old('email') }}">
                     </div>
-                    <x-campo-clave name="password" label="Contraseña" required />
+                    <div>
+                        <x-campo-clave name="password" label="Contraseña" required />
+                        <a href="{{ route('password.request') }}" class="inline-block mt-1.5 text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-400">¿Olvidaste tu contraseña?</a>
+                    </div>
 
                     <button type="submit" class="btn-primario w-full">
                         <x-icon name="lock" class="w-4 h-4" /> Entrar

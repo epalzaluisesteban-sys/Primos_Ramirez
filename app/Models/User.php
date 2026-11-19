@@ -60,6 +60,12 @@ class User extends Authenticatable
         return $correo === null ? null : mb_strtolower(trim($correo));
     }
 
+    // El enlace de "¿Olvidaste tu contraseña?" va en español (el de Laravel viene en inglés)
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new \App\Notifications\RestablecerClave($token));
+    }
+
     protected function email(): \Illuminate\Database\Eloquent\Casts\Attribute
     {
         return \Illuminate\Database\Eloquent\Casts\Attribute::make(set: fn (?string $valor) => self::normalizarCorreo($valor));

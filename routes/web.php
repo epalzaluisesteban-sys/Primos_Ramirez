@@ -20,6 +20,7 @@ use App\Http\Controllers\EstadisticaController;
 use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\TasaCambioController;
 use App\Http\Controllers\RespaldoController;
+use App\Http\Controllers\RecuperarClaveController;
 
 // ==========================================
 // Rutas Públicas (Autenticación)
@@ -27,6 +28,14 @@ use App\Http\Controllers\RespaldoController;
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Recuperar la contraseña por correo (los nombres password.* los usa Laravel para armar el enlace)
+Route::middleware('guest')->group(function () {
+    Route::get('/olvide-mi-clave', [RecuperarClaveController::class, 'pedir'])->name('password.request');
+    Route::post('/olvide-mi-clave', [RecuperarClaveController::class, 'enviar'])->middleware('throttle:5,1')->name('password.email');
+    Route::get('/restablecer-clave/{token}', [RecuperarClaveController::class, 'formulario'])->name('password.reset');
+    Route::post('/restablecer-clave', [RecuperarClaveController::class, 'guardar'])->middleware('throttle:10,1')->name('password.update');
+});
 
 // ==========================================
 // Rutas Protegidas (Requieren Iniciar Sesión)

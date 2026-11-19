@@ -73,6 +73,15 @@ services:
         value: respaldos
       - key: AWS_BUCKET_RESPALDOS
         value: respaldos
+      # Correo de "¿Olvidaste tu contraseña?" por la API de Brevo (Render gratis bloquea SMTP)
+      - key: MAIL_MAILER
+        value: brevo
+      - key: BREVO_API_KEY
+        sync: false            # Brevo → SMTP & API → API Keys (empieza con xkeysib-)
+      - key: MAIL_FROM_ADDRESS
+        sync: false            # El remitente verificado en Brevo (Senders)
+      - key: MAIL_FROM_NAME
+        value: Los Primos Ramírez
       # Primer usuario Dueño (solo se usa si no existe ninguno)
       - key: ADMIN_NAME
         value: Administrador

@@ -102,6 +102,7 @@ return [
         'email' => 'correo electrónico',
         'password' => 'contraseña',
         'current_password' => 'contraseña actual',
+        'token' => 'enlace de recuperación',
         'rol' => 'rol',
         'foto' => 'foto',
         'telefono' => 'teléfono',
