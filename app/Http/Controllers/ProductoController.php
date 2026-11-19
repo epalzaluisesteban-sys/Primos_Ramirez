@@ -7,10 +7,13 @@ use App\Models\AjusteInventario;
 use App\Models\Producto;
 use App\Models\Categoria;
 use App\Services\AlertasInventarioService;
+use App\Support\Etiqueta;
+use App\Support\Unicidad;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductoController extends Controller
@@ -21,15 +24,36 @@ class ProductoController extends Controller
      */
     public function index(Request $request, AlertasInventarioService $alertas)
     {
-        $filtro = AlertasInventarioService::filtroValido($request->query('filtro'));
-        $grupos = $alertas->clasificar(Producto::with('categoria')->latest()->get());
+        ['filtro' => $filtro, 'categoria' => $categoria, 'grupos' => $grupos] = $this->productosFiltrados($request, $alertas);
 
         $productos = $grupos[$filtro];
         $conteos = array_map(fn ($g) => $g->count(), $grupos);
         // Para el botón "Comprar" en cada fila
         $idsComprar = $grupos['comprar']->pluck('id')->flip();
+        $categorias = Categoria::orderBy('nombre')->get();
 
-        return view('productos.index', compact('productos', 'filtro', 'conteos', 'idsComprar'));
+        return view('productos.index', compact('productos', 'filtro', 'conteos', 'idsComprar', 'categorias', 'categoria'));
+    }
+
+    /**
+     * Productos de la categoría elegida (?categoria_id=, frutas, verduras…) repartidos en los filtros de alerta
+     * (?filtro=). La lista, el CSV y el PDF usan lo mismo.
+     */
+    private function productosFiltrados(Request $request, AlertasInventarioService $alertas): array
+    {
+        $request->validate(['categoria_id' => 'nullable|integer|exists:categorias,id']);
+        $categoria = $request->filled('categoria_id') ? Categoria::find($request->categoria_id) : null;
+
+        $productos = Producto::with('categoria')
+            ->when($categoria, fn ($q) => $q->where('categoria_id', $categoria->id))
+            ->latest()
+            ->get();
+
+        return [
+            'filtro' => AlertasInventarioService::filtroValido($request->query('filtro')),
+            'categoria' => $categoria,
+            'grupos' => $alertas->clasificar($productos),
+        ];
     }
 
     public function create()
@@ -38,25 +62,60 @@ class ProductoController extends Controller
         return view('productos.create', compact('categorias'));
     }
 
-    private function validacionProducto(): array
+    /**
+     * Un producto no se registra dos veces: mismo nombre y marca (sin importar mayúsculas, tildes ni espacios)
+     * en la misma unidad, o mismo código de barras, aunque el otro esté desactivado.
+     */
+    private function validacionProducto(Request $request, ?Producto $producto = null): array
     {
+        $request->merge([
+            'codigo_barras' => preg_replace('/\s+/', '', (string) $request->input('codigo_barras')) ?: null,
+        ]);
+
         return [
-            'nombre' => 'required|string|max:255',
-            'categoria_id' => 'required|exists:categorias,id',
+            'nombre' => [
+                'required', 'string', 'min:2', 'max:255',
+                function ($atributo, $valor, $falla) use ($request, $producto) {
+                    $clave = Unicidad::claveProducto($valor, $request->input('marca'));
+                    $otro = Producto::conClave($clave, $producto?->id, ['unidad_medida' => $request->input('unidad_medida')]);
+                    if ($otro) {
+                        $falla("Ya existe el producto «{$otro->nombre}"
+                            . ($otro->marca ? " {$otro->marca}" : '') . "» por {$otro->unidadLabel()}."
+                            . $otro->avisoSiInactivo());
+                    }
+                },
+            ],
+            'categoria_id' => 'required|integer|exists:categorias,id',
             'foto' => 'nullable|image|max:2048',
             'marca' => 'nullable|string|max:255',
             'ubicacion' => 'nullable|string|max:255',
-            'codigo_barras' => 'nullable|string|max:100',
+            'codigo_barras' => [
+                'nullable', 'string', 'max:100', Etiqueta::REGLA_CODIGO_BARRAS,
+                function ($atributo, $valor, $falla) use ($producto) {
+                    $otro = Producto::where('codigo_barras', $valor)->when($producto, fn ($q) => $q->whereKeyNot($producto->id))->first();
+                    if ($otro) {
+                        $falla("Ese código de barras ya es del producto «{$otro->nombre}».");
+                    }
+                },
+            ],
             'codigo_qr' => 'nullable|string|max:255',
             'unidad_medida' => 'required|in:' . implode(',', array_keys(Producto::UNIDADES)),
-            'precio' => 'required|numeric|min:0',
-            'precio_compra' => 'nullable|numeric|min:0',
-            'stock' => ['required', 'numeric', 'min:0', $this->sinDecimalesSiEsPorUnidad()],
-            'stock_minimo' => ['required', 'numeric', 'min:0', $this->sinDecimalesSiEsPorUnidad()],
-            'stock_maximo' => ['nullable', 'numeric', 'min:0', 'gte:stock_minimo', $this->sinDecimalesSiEsPorUnidad()],
-            'fecha_vencimiento' => 'nullable|date',
+            'precio' => 'required|numeric|min:0.01|max:99999999',
+            'precio_compra' => 'nullable|numeric|min:0|max:99999999',
+            'stock' => ['required', 'numeric', 'min:0', 'max:9999999', $this->sinDecimalesSiEsPorUnidad()],
+            'stock_minimo' => ['required', 'numeric', 'min:0', 'max:9999999', $this->sinDecimalesSiEsPorUnidad()],
+            'stock_maximo' => ['nullable', 'numeric', 'min:0', 'max:9999999', 'gte:stock_minimo', $this->sinDecimalesSiEsPorUnidad()],
+            // Al registrarlo no puede venir ya vencido; al editar sí se conserva una fecha pasada
+            'fecha_vencimiento' => $producto ? 'nullable|date' : 'nullable|date|after_or_equal:today',
         ];
     }
+
+    private const MENSAJES = [
+        'precio.min' => 'El precio de venta tiene que ser mayor que $0.',
+        'codigo_barras.regex' => 'El código de barras solo lleva números, letras sin tilde ni ñ y símbolos, sin espacios.',
+        'stock_maximo.gte' => 'La existencia máxima no puede ser menor que la mínima.',
+        'fecha_vencimiento.after_or_equal' => 'La fecha de vencimiento no puede ser anterior a hoy: un producto nuevo no puede estar vencido.',
+    ];
 
     // Productos por unidad, caja, atado o saco: las existencias van sin decimales.
     private function sinDecimalesSiEsPorUnidad(): \Closure
@@ -77,7 +136,7 @@ class ProductoController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate($this->validacionProducto());
+        $request->validate($this->validacionProducto($request), self::MENSAJES);
 
         $datos = $request->only(self::CAMPOS) + ['stock' => 0, 'activo' => true];
         if ($request->hasFile('foto')) {
@@ -100,10 +159,10 @@ class ProductoController extends Controller
 
     public function update(Request $request, Producto $producto)
     {
-        $request->validate($this->validacionProducto() + [
+        $request->validate($this->validacionProducto($request, $producto) + [
             'motivo_ajuste' => 'nullable|string|max:255',
             'activo' => 'nullable|boolean',
-        ]);
+        ], self::MENSAJES);
 
         $datos = $request->only(self::CAMPOS) + ['activo' => $request->boolean('activo')];
         if ($request->hasFile('foto')) {
@@ -144,9 +203,10 @@ class ProductoController extends Controller
     }
 
     // Exporta el catálogo/inventario (stock, precio, valor) a CSV compatible con Excel.
-    public function exportarExcel(): StreamedResponse
+    public function exportarExcel(Request $request, AlertasInventarioService $alertas): StreamedResponse
     {
-        $productos = Producto::with('categoria')->orderBy('nombre')->get();
+        ['filtro' => $filtro, 'grupos' => $grupos] = $this->productosFiltrados($request, $alertas);
+        $productos = $grupos[$filtro]->sortBy('nombre', SORT_NATURAL | SORT_FLAG_CASE);
         return $this->descargarCsv('inventario_productos_' . now()->format('Y-m-d_His') . '.csv', function (callable $fila) use ($productos) {
             $fila(['Producto', 'Marca', 'Categoría', 'Ubicación', 'Código de Barras', 'Unidad', 'Precio Compra', 'Precio Venta', '% Ganancia', 'Stock', 'Stock Mínimo', 'Stock Máximo', 'Estado', 'Vencimiento', 'Valor Inventario']);
 
@@ -174,14 +234,17 @@ class ProductoController extends Controller
     }
 
     // Exporta el catálogo/inventario a PDF.
-    public function exportarPDF()
+    public function exportarPDF(Request $request, AlertasInventarioService $alertas)
     {
-        $productos = Producto::with('categoria')->orderBy('nombre')->get();
+        ['filtro' => $filtro, 'categoria' => $categoria, 'grupos' => $grupos] = $this->productosFiltrados($request, $alertas);
+        $productos = $grupos[$filtro]->sortBy('nombre', SORT_NATURAL | SORT_FLAG_CASE);
         $valorTotalInventario = $productos->sum(fn ($p) => $p->stock * $p->precio);
         $estados = $productos->mapWithKeys(fn ($p) => [$p->id => $this->estadoProducto($p)]);
+        $nombreFiltro = $filtro === 'todos' ? null : AlertasInventarioService::FILTROS[$filtro];
 
-        $pdf = Pdf::loadView('productos.pdf', compact('productos', 'valorTotalInventario', 'estados'));
-        return $pdf->download('Inventario_Productos_' . now()->format('Y-m-d') . '.pdf');
+        $pdf = Pdf::loadView('productos.pdf', compact('productos', 'valorTotalInventario', 'estados', 'categoria', 'nombreFiltro'));
+        $nombre = 'Inventario' . ($categoria ? '_' . Str::slug($categoria->nombre, '_') : '') . ($nombreFiltro ? '_' . $filtro : '');
+        return $this->entregarPdf($pdf, $nombre . '_' . now()->format('Y-m-d') . '.pdf');
     }
 
     private function estadoProducto(Producto $producto): string
@@ -195,9 +258,17 @@ class ProductoController extends Controller
         return 'Normal';
     }
 
-    public function kardex(Producto $producto)
+    /**
+     * Kardex del producto. El listado lo pide por fetch y muestra un resumen en la ventana flotante
+     * (ficha con los últimos movimientos); abierto directo se ve la página completa.
+     */
+    public function kardex(Request $request, Producto $producto)
     {
         $datos = $this->construirMovimientos($producto);
+
+        if ($request->ajax()) {
+            return view('productos._ficha', array_merge(['producto' => $producto->load('categoria')], $datos));
+        }
 
         return view('productos.kardex', array_merge(['producto' => $producto], $datos));
     }
@@ -230,7 +301,19 @@ class ProductoController extends Controller
         $datos = $this->construirMovimientos($producto);
 
         $pdf = Pdf::loadView('productos.kardex-pdf', array_merge(['producto' => $producto], $datos));
-        return $pdf->download('Kardex_' . str_replace(' ', '_', $producto->nombre) . '_' . now()->format('Y-m-d') . '.pdf');
+        return $this->entregarPdf($pdf, 'Kardex_' . str_replace(' ', '_', $producto->nombre) . '_' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    /** Etiqueta del producto (nombre, precio, código de barras y QR) en PDF de 100 x 45 mm, para imprimirla. */
+    public function etiquetaPdf(Producto $producto)
+    {
+        $pdf = Pdf::loadView('productos.etiqueta-pdf', [
+            'producto' => $producto,
+            'codigoBarras' => Etiqueta::codigoBarrasSvg($producto),
+            'qr' => Etiqueta::qrSvg($producto),
+        ])->setPaper([0, 0, 100 / 25.4 * 72, 45 / 25.4 * 72]);
+
+        return $pdf->stream('Etiqueta_' . Str::slug($producto->nombre, '_') . '.pdf');
     }
 
     // Construye el historial de movimientos (entradas/salidas), costo promedio ponderado

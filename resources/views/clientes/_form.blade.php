@@ -1,7 +1,4 @@
 {{-- Formulario compartido entre crear y editar cliente --}}
-@php
-    [$documentoTipo, $documentoNumero] = \App\Support\Contacto::separarDocumento($cliente->rif ?? null);
-@endphp
 
 <div class="flex items-center gap-4">
     <div class="shrink-0">
@@ -30,26 +27,8 @@
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <x-campo-telefono name="telefono" label="Teléfono (Opcional)" :valor="$cliente->telefono ?? null" />
 
-    <div>
-        <label class="etiqueta" for="documento_numero">Cédula o RIF (Opcional)</label>
-        <div class="flex gap-2">
-            <select name="documento_tipo" aria-label="Tipo de documento" class="campo w-20 shrink-0 @error('documento_tipo') border-rose-500 @enderror">
-                @foreach(\App\Support\Contacto::TIPOS_DOCUMENTO as $tipo)
-                    <option value="{{ $tipo }}" @selected(old('documento_tipo', $documentoTipo) === $tipo)>{{ $tipo }}</option>
-                @endforeach
-            </select>
-            <input id="documento_numero" type="text" name="documento_numero"
-                   value="{{ old('documento_numero', $documentoNumero) }}"
-                   inputmode="numeric" maxlength="9" pattern="[0-9]{6,9}"
-                   title="Solo números, de 6 a 9 (ej. 12345678)"
-                   oninput="soloDigitos(this, 9)"
-                   placeholder="12345678"
-                   class="campo @error('documento_numero') border-rose-500 @enderror">
-        </div>
-        <p class="ayuda-campo">V venezolano, E extranjero, J empresa, G gobierno, P pasaporte. Solo números.</p>
-        @error('documento_tipo') <p class="error-campo">{{ $message }}</p> @enderror
-        @error('documento_numero') <p class="error-campo">{{ $message }}</p> @enderror
-    </div>
+    <x-campo-documento :valor="$cliente->rif ?? null"
+                       ayuda="V venezolano, E extranjero, J empresa, G gobierno, P pasaporte. Solo números. No se puede repetir entre clientes." />
 </div>
 
 <div>

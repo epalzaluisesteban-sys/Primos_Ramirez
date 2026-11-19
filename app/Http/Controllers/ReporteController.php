@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Categoria;
 use App\Models\Compra;
 use App\Models\DetalleVenta;
 use App\Models\Venta;
@@ -48,6 +49,7 @@ class ReporteController extends Controller
         }
 
         return view('reportes.ganancias', array_merge($datos, [
+            'categorias' => Categoria::orderBy('nombre')->get(),
             'ventasPorMes' => $ventasPorMes,
             'variacionMensual' => $variacionMensual,
         ]));
@@ -93,26 +95,35 @@ class ReporteController extends Controller
         $datos = $this->datosGanancias($request);
 
         $pdf = Pdf::loadView('reportes.ganancias-pdf', $datos);
-        return $pdf->download('Reporte_Ganancias_' . now()->format('Y-m-d') . '.pdf');
+        return $this->entregarPdf($pdf, 'Reporte_Ganancias_' . now()->format('Y-m-d') . '.pdf');
     }
 
     // Construye la utilidad/margen por producto y por categoría, respetando el
     // filtro opcional de fechas. Reutilizado por la vista y ambas exportaciones.
     private function datosGanancias(Request $request): array
     {
+        $request->validate([
+            'desde' => 'nullable|date',
+            'hasta' => 'nullable|date|after_or_equal:desde',
+            'categoria_id' => 'nullable|integer|exists:categorias,id',
+        ], [
+            'hasta.after_or_equal' => 'La fecha "Hasta" no puede ser anterior a "Desde".',
+        ]);
         $desde = $request->input('desde');
         $hasta = $request->input('hasta');
+        $categoria = $request->filled('categoria_id') ? Categoria::find($request->categoria_id) : null;
 
         // 1. Costo promedio ponderado por producto (basado en compras registradas)
         $costosPromedio = Compra::costosPromedio();
 
-        // 2. Detalle de ventas (aplicando filtro de fechas si se envió)
+        // 2. Detalle de ventas (aplicando filtro de fechas y de categoría si se enviaron)
         $detalles = DetalleVenta::with(['producto.categoria', 'venta'])
             ->whereHas('venta', function ($q) use ($desde, $hasta) {
                 $q->where('anulada', false);
                 if ($desde) $q->whereDate('fecha', '>=', $desde);
                 if ($hasta) $q->whereDate('fecha', '<=', $hasta);
             })
+            ->when($categoria, fn ($q) => $q->whereHas('producto', fn ($p) => $p->where('categoria_id', $categoria->id)))
             ->get();
 
         $ingresoTotal = 0;
@@ -192,7 +203,8 @@ class ReporteController extends Controller
             'porProducto',
             'porCategoria',
             'desde',
-            'hasta'
+            'hasta',
+            'categoria'
         );
     }
 }

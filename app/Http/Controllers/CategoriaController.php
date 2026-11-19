@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\Almacen;
 use App\Models\Categoria;
+use App\Support\Unicidad;
 use Illuminate\Http\Request;
 
 class CategoriaController extends Controller
@@ -15,15 +16,28 @@ class CategoriaController extends Controller
         return view('categorias.index', compact('categorias'));
     }
 
-    public function store(Request $request)
+    // "Frutas", "frutas " y "FRUTÁS" son la misma categoría
+    private function reglas(?Categoria $categoria = null): array
     {
-        $request->validate([
-            'nombre' => 'required|string|max:100|unique:categorias,nombre',
+        return [
+            'nombre' => [
+                'required', 'string', 'min:2', 'max:100',
+                function ($atributo, $valor, $falla) use ($categoria) {
+                    if ($otra = Categoria::conClave(Unicidad::normalizar($valor), $categoria?->id)) {
+                        $falla("Ya existe la categoría «{$otra->nombre}».");
+                    }
+                },
+            ],
             'descripcion' => 'nullable|string|max:255',
             'imagen' => 'nullable|image|max:2048',
-        ]);
+        ];
+    }
 
-        $datos = $request->except('imagen');
+    public function store(Request $request)
+    {
+        $request->validate($this->reglas());
+
+        $datos = $request->only(['nombre', 'descripcion']);
         if ($request->hasFile('imagen')) {
             $datos['imagen'] = Almacen::guardar($request->file('imagen'), 'categorias');
         }
@@ -40,11 +54,7 @@ class CategoriaController extends Controller
 
     public function update(Request $request, Categoria $categoria)
     {
-        $request->validate([
-            'nombre' => 'required|string|max:100|unique:categorias,nombre,' . $categoria->id,
-            'descripcion' => 'nullable|string|max:255',
-            'imagen' => 'nullable|image|max:2048',
-        ]);
+        $request->validate($this->reglas($categoria));
 
         $datos = [
             'nombre' => $request->nombre,

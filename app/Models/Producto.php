@@ -9,6 +9,7 @@ class Producto extends Model
 {
     use \App\Models\Concerns\TieneFoto;
     use HasFactory;
+    use \App\Models\Concerns\TieneNombreUnico;
 
     protected $fillable = [
         'categoria_id',
@@ -134,6 +135,12 @@ class Producto extends Model
     public function scopeActivos($query)
     {
         return $query->where('activo', true);
+    }
+
+    // Mismo producto = mismo nombre y marca en la misma unidad ("Tomate" por kg y por caja son dos productos)
+    public function claveNombre(): string
+    {
+        return \App\Support\Unicidad::claveProducto($this->nombre, $this->marca);
     }
 
     public function unidadLabel(): string

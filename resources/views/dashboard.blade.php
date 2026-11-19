@@ -89,15 +89,15 @@
         <!-- ============================================ -->
         <!-- Tira de Indicadores Clave (KPIs) -->
         <!-- ============================================ -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
 
-            <div class="tarjeta p-5">
+            <div class="tarjeta p-4">
                 <p class="cifra-etiqueta">Ventas de hoy</p>
                 <x-precio :usd="$ventasHoyMonto" :ves="$ventasHoyVes" class="cifra-valor" />
                 <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">{{ $ventasHoyCant }} venta(s) registrada(s)</p>
             </div>
 
-            <div class="tarjeta p-5">
+            <div class="tarjeta p-4">
                 <p class="cifra-etiqueta">Ventas del mes</p>
                 <x-precio :usd="$ventasMesActual" :ves="$ventasMesVes" class="cifra-valor" />
                 <p class="text-xs mt-1">
@@ -114,7 +114,7 @@
             </div>
 
             @if($esGerencia)
-                <div class="tarjeta p-5">
+                <div class="tarjeta p-4">
                     <p class="cifra-etiqueta">Compras del mes</p>
                     <x-precio :usd="$comprasMesActual" class="cifra-valor" />
                     <p class="text-xs mt-1">
@@ -130,7 +130,7 @@
                     </p>
                 </div>
 
-                <div class="tarjeta p-5">
+                <div class="tarjeta p-4">
                     <p class="cifra-etiqueta">Ganancia neta del mes</p>
                     <x-precio :usd="$gananciaNetaMes" class="mt-1 font-display text-2xl font-bold {{ $gananciaNetaMes >= 0 ? 'text-stone-800 dark:text-stone-100' : 'text-rose-600 dark:text-rose-400' }}" />
                     @if($ingresoConCostoMes > 0)
@@ -145,19 +145,19 @@
                 </div>
             @endif
 
-            <div class="tarjeta p-5">
+            <div class="tarjeta p-4">
                 <p class="cifra-etiqueta">Productos agotándose</p>
                 <p class="cifra-valor text-amber-600 dark:text-amber-400">{{ $productosStockBajo->count() }}</p>
                 <p class="text-xs text-stone-400 dark:text-stone-500 mt-1">en stock crítico</p>
             </div>
 
-            <div class="tarjeta p-5">
+            <div class="tarjeta p-4">
                 <p class="cifra-etiqueta">Productos vencidos</p>
                 <p class="cifra-valor text-rose-600 dark:text-rose-400">{{ $productosVencidos->count() }}</p>
                 <p class="text-xs text-stone-400 dark:text-stone-500 mt-1">{{ $productosPorVencer->count() }} por vencer (≤5 días)</p>
             </div>
 
-            <div class="tarjeta p-5">
+            <div class="tarjeta p-4">
                 <p class="cifra-etiqueta">Caja del día</p>
                 <p class="font-display text-lg font-bold mt-1">
                     @if(!$cajaHoy)
@@ -174,7 +174,7 @@
             </div>
 
             @if($esGerencia)
-                <div class="tarjeta p-5">
+                <div class="tarjeta p-4">
                     <p class="cifra-etiqueta">Valor de inventario</p>
                     <x-precio :usd="$valorInventario" class="cifra-valor" />
                     <p class="text-xs text-stone-400 dark:text-stone-500 mt-1">{{ $totalProductosInv }} productos · {{ number_format($unidadesEnStock, 0) }} unids.</p>

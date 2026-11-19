@@ -33,18 +33,22 @@
                     </h4>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="etiqueta">Nombre completo</label>
-                            <input type="text" name="name" value="{{ old('name', $user->name) }}" required class="campo dark:bg-stone-800">
+                            <label class="etiqueta" for="perfil-nombre">Nombre completo</label>
+                            <input type="text" id="perfil-nombre" name="name" value="{{ old('name', $user->name) }}" required minlength="2" maxlength="255" class="campo @error('name') border-rose-500 @enderror">
+                            @error('name') <p class="error-campo">{{ $message }}</p> @enderror
                         </div>
 
                         <div>
-                            <label class="etiqueta">Correo electrónico</label>
-                            <input type="email" name="email" value="{{ old('email', $user->email) }}" required class="campo dark:bg-stone-800">
+                            <label class="etiqueta" for="perfil-correo">Correo electrónico</label>
+                            <input type="email" id="perfil-correo" name="email" value="{{ old('email', $user->email) }}" required maxlength="255" autocomplete="email" class="campo @error('email') border-rose-500 @enderror">
+                            @error('email') <p class="error-campo">{{ $message }}</p> @enderror
                         </div>
                     </div>
                     <div class="mt-4">
-                        <label class="etiqueta">Foto de perfil (opcional)</label>
-                        <input type="file" name="foto" accept="image/*" class="campo-archivo">
+                        <label class="etiqueta" for="perfil-foto">Foto de perfil (Opcional)</label>
+                        <input type="file" id="perfil-foto" name="foto" accept="image/*" class="campo-archivo">
+                        <p class="ayuda-campo">JPG o PNG, máximo 2MB.</p>
+                        @error('foto') <p class="error-campo">{{ $message }}</p> @enderror
                     </div>
                 </div>
 

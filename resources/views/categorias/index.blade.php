@@ -5,28 +5,13 @@
 @section('content')
     <div class="pagina">
 
-        <x-encabezado titulo="Categorías" subtitulo="Grupos para ordenar los productos (frutas, verduras, granos…)." />
+        <x-encabezado titulo="Categorías" subtitulo="Grupos para ordenar los productos (frutas, verduras, granos…).">
+            <button type="button" data-abrir-ventana="ventana-categoria" class="btn-primario"><x-icon name="plus" class="w-4 h-4" /> Nueva categoría</button>
+        </x-encabezado>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
-            <!-- Nueva categoría -->
-            <div class="tarjeta">
-                <h3 class="titulo-tarjeta mb-4">Nueva categoría
-                </h3>
-
-                <form action="{{ route('categorias.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
-                    @csrf
-                    @include('categorias._form')
-
-                    <button type="submit" class="btn-primario w-full">
-                        <x-icon name="plus" class="w-4 h-4" /> Guardar categoría
-                    </button>
-                </form>
-            </div>
-
-            <!-- Listado -->
-            <div class="tarjeta lg:col-span-2 p-0 overflow-hidden">
-                <div class="flex items-center gap-2 px-6 py-4 border-b border-stone-200 dark:border-stone-700">
+        <div>
+            <div class="tarjeta p-0 overflow-hidden">
+                <div class="flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-200 dark:border-stone-700">
                     <h3 class="titulo-tarjeta">Categorías registradas</h3>
                     <span class="insignia-gris">{{ $categorias->count() }}</span>
                 </div>
@@ -92,7 +77,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="3" class="tabla-vacia">Todavía no hay categorías. Crea la primera con el formulario.</td>
+                                    <td colspan="3" class="tabla-vacia">Todavía no hay categorías. <button type="button" data-abrir-ventana="ventana-categoria" class="font-semibold text-emerald-700 dark:text-emerald-400 hover:underline">Crea la primera</button>.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -100,7 +85,7 @@
                 </div>
 
                 @if(auth()->user()->esDueno() && $categorias->isNotEmpty())
-                    <p class="px-6 py-3 border-t border-stone-200 dark:border-stone-700 text-[11px] text-stone-500 dark:text-stone-400 flex flex-wrap gap-x-4 gap-y-1">
+                    <p class="px-4 sm:px-6 py-3 border-t border-stone-200 dark:border-stone-700 text-[11px] text-stone-500 dark:text-stone-400 flex flex-wrap gap-x-4 gap-y-1">
                         <span class="inline-flex items-center gap-1"><x-icon name="trash" class="w-3.5 h-3.5" /> Solo se pueden eliminar las categorías vacías.</span>
                         <span class="inline-flex items-center gap-1"><x-icon name="lock" class="w-3.5 h-3.5" /> Con productos: muévelos primero a otra categoría.</span>
                     </p>
@@ -110,4 +95,16 @@
         </div>
 
     </div>
+
+    <x-ventana id="ventana-categoria" titulo="Nueva categoría" subtitulo="Después podrás elegirla al registrar un producto.">
+        <form action="{{ route('categorias.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+            @csrf
+            <input type="hidden" name="_ventana" value="ventana-categoria">
+            @include('categorias._form')
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
+                <button type="button" data-cerrar-ventana class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn-primario"><x-icon name="check" class="w-4 h-4" /> Guardar categoría</button>
+            </div>
+        </form>
+    </x-ventana>
 @endsection

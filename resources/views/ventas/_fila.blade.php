@@ -9,11 +9,11 @@
     $productoFila = $productos->firstWhere('id', (int) $productoSel);
     $entera = $productoFila && $productoFila->usaCantidadEntera();
 @endphp
-<div class="item-row grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-stone-50 dark:bg-stone-900/60 p-4 rounded-md border border-stone-200 dark:border-stone-700">
-    <div class="md:col-span-6">
-        <label class="block text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase mb-1.5">Producto</label>
-        <select name="productos[{{ $i }}][id]" required class="campo producto-select">
-            <option value="" data-precio="0">Seleccionar producto...</option>
+<div class="item-row grid grid-cols-12 gap-x-3 gap-y-3 items-end py-4 first:pt-0 last:pb-0 border-b border-stone-200 dark:border-stone-700 last:border-b-0">
+    <div class="col-span-12 sm:col-span-6">
+        <label class="etiqueta" for="producto-{{ $i }}">Producto</label>
+        <select id="producto-{{ $i }}" name="productos[{{ $i }}][id]" required class="campo producto-select">
+            <option value="" data-precio="0">Selecciona el producto…</option>
             @foreach($productos as $prod)
                 <option value="{{ $prod->id }}" data-precio="{{ $prod->precio }}" data-entero="{{ $prod->usaCantidadEntera() ? 1 : 0 }}" @selected((string) $productoSel === (string) $prod->id)>
                     {{ $prod->nombre }} — @usd($prod->precio) (@bs($prod->precio)) / {{ $prod->unidadLabel() }} (Stock: {{ \App\Support\Cantidad::formato($prod->stock + ($stockExtra[$prod->id] ?? 0)) }})
@@ -21,16 +21,18 @@
             @endforeach
         </select>
     </div>
-    <div class="md:col-span-3">
-        <label class="block text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase mb-1.5">Cantidad</label>
-        <input type="number" name="productos[{{ $i }}][cantidad]" min="{{ $entera ? 1 : 0.001 }}" step="{{ $entera ? 1 : 0.001 }}" inputmode="{{ $entera ? 'numeric' : 'decimal' }}" data-entero="{{ $entera ? 1 : 0 }}" value="{{ is_numeric($cantidad) ? \App\Support\Cantidad::formato($cantidad) : $cantidad }}" required class="campo cantidad-input">    </div>
-    <div class="md:col-span-2 font-bold text-stone-800 dark:text-stone-100 text-right">
-        {{-- El subtotal lo calcula el script del formulario al cargar y al cambiar algo --}}
-        Subtotal: $<span class="subtotal-span">0.00</span>
+    <div class="col-span-5 sm:col-span-2">
+        <label class="etiqueta" for="cantidad-{{ $i }}">Cantidad</label>
+        <input id="cantidad-{{ $i }}" type="number" name="productos[{{ $i }}][cantidad]" min="{{ $entera ? 1 : 0.001 }}" step="{{ $entera ? 1 : 0.001 }}" inputmode="{{ $entera ? 'numeric' : 'decimal' }}" data-entero="{{ $entera ? 1 : 0 }}" value="{{ is_numeric($cantidad) ? \App\Support\Cantidad::formato($cantidad) : $cantidad }}" max="999999" required class="campo cantidad-input">
     </div>
-    <div class="md:col-span-1 text-right">
-        <button type="button" data-quitar-fila class="p-2 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-400 transition" title="Quitar producto">
-            <x-icon name="x" class="w-4 h-4" />
+    <div class="col-span-5 sm:col-span-3">
+        <span class="etiqueta">Subtotal</span>
+        {{-- El subtotal lo calcula el script del formulario al cargar y al cambiar algo --}}
+        <p class="caja-suave min-h-[2.625rem] px-3 flex items-center justify-end font-bold text-stone-800 dark:text-stone-100 whitespace-nowrap">$<span class="subtotal-span">0.00</span></p>
+    </div>
+    <div class="col-span-2 sm:col-span-1 flex justify-end">
+        <button type="button" data-quitar-fila class="btn-icono-rojo w-[2.625rem] h-[2.625rem]" title="Quitar producto" aria-label="Quitar producto">
+            <x-icon name="trash" class="w-4 h-4" />
         </button>
     </div>
 </div>

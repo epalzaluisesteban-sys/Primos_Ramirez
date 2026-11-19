@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Merma;
 use App\Models\Producto;
+use App\Support\Cantidad;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -55,32 +56,32 @@ class MermaController extends Controller
         $valorTotalPerdido = $mermas->sum(fn ($m) => $m->valorEstimado());
 
         $pdf = Pdf::loadView('mermas.pdf', compact('mermas', 'valorTotalPerdido'));
-        return $pdf->download('Perdidas_' . now()->format('Y-m-d') . '.pdf');
+        return $this->entregarPdf($pdf, 'Perdidas_' . now()->format('Y-m-d') . '.pdf');
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'producto_id' => 'required|exists:productos,id',
-            'cantidad' => 'required|numeric|min:0.001',
+            'producto_id' => 'required|integer|exists:productos,id',
+            'cantidad' => 'required|numeric|min:0.001|max:999999',
             'motivo' => 'required|in:danado,vencido,robo_extravio,otro',
-            'observacion' => 'nullable|string|max:500',
+            'observacion' => 'nullable|required_if:motivo,otro|string|max:500',
+        ], [
+            'observacion.required_if' => 'Con el motivo "Otro", explica en la observación qué pasó.',
         ]);
 
-        DB::beginTransaction();
-        try {
+        $error = DB::transaction(function () use ($request) {
             // Se bloquea la fila para que dos operaciones simultáneas no dejen el stock negativo
             $producto = Producto::lockForUpdate()->findOrFail($request->producto_id);
 
             // Productos por unidad (unidad, caja, atado, saco) se descartan en cantidades enteras
             if ($error = $producto->errorCantidad($request->cantidad)) {
-                DB::rollBack();
-                return back()->withErrors(['cantidad' => $error])->withInput();
+                return ['cantidad' => $error];
             }
 
             if ($request->cantidad > $producto->stock) {
-                DB::rollBack();
-                return back()->withErrors(['error' => 'La cantidad a descartar (' . $request->cantidad . ') supera el stock disponible (' . $producto->stock . ').'])->withInput();
+                return ['cantidad' => 'La cantidad a descartar (' . Cantidad::formato($request->cantidad) . ') supera la existencia de '
+                    . $producto->nombre . ' (' . Cantidad::formato($producto->stock) . ' ' . $producto->unidadLabel() . ').'];
             }
 
             Merma::create([
@@ -94,11 +95,13 @@ class MermaController extends Controller
 
             $producto->decrement('stock', $request->cantidad);
 
-            DB::commit();
-            return redirect()->route('mermas.index')->with('success', 'Pérdida registrada y existencia actualizada.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withErrors(['error' => 'Error al registrar la pérdida: ' . $e->getMessage()]);
+            return null;
+        });
+
+        if ($error) {
+            return back()->withErrors($error)->withInput();
         }
+
+        return redirect()->route('mermas.index')->with('success', 'Pérdida registrada y existencia actualizada.');
     }
 }

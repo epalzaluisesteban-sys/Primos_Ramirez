@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Categoria extends Model
 {
+    use Concerns\TieneNombreUnico;
+
     protected $fillable = ['nombre', 'descripcion', 'imagen'];
 
     public function productos(): HasMany

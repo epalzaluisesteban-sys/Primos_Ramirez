@@ -11,7 +11,10 @@ Cada pantalla debe decir **para qué sirve** y **qué hacer después**, en espa�
 ## Reglas de oro
 1. Usa las piezas de `resources/css/app.css` (ya traen modo oscuro). No copies cadenas largas de Tailwind;
    si una pieza no alcanza, ajústala con utilidades (`tarjeta p-0`, `btn-primario w-full`) o agrégala a `app.css`
-   y corre `npm run build`.
+   y corre `npm run build`. Los campos de una línea (`input`/`select` con `.campo`) y los botones normales miden
+   42 px para que una fila de campos y botones quede alineada: no les cambies el alto con `py-*` o `text-lg`.
+   Las cifras clave van en `tarjeta p-4` con `cifra-etiqueta` + `cifra-valor`. Casillas y radios con `.casilla`
+   (pinta el verde con `accent-color`). Revisión visual detallada: skill `ui-pixel-auditor`.
 2. Toda clase de color lleva su par `dark:` (o usa una pieza que ya lo tenga). Base `stone`; verde = acción/éxito,
    naranja/ámbar = atención o fiado, rojo = peligro/anulado, azul = información.
 3. Íconos solo con `<x-icon name="..." class="w-4 h-4" />`. Sin emojis. Si falta uno, agrega su SVG

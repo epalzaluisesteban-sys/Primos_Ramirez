@@ -1,7 +1,7 @@
 @extends('pdf.layout')
 
 @section('titulo', 'Reporte de Ganancias')
-@section('subtitulo', 'Reporte de Ganancias' . ($desde || $hasta ? ' (' . ($desde ?: 'inicio') . ' a ' . ($hasta ?: 'hoy') . ')' : ''))
+@section('subtitulo', 'Reporte de Ganancias' . ($categoria ? ' — ' . $categoria->nombre : '') . ($desde || $hasta ? ' (' . ($desde ?: 'inicio') . ' a ' . ($hasta ?: 'hoy') . ')' : ''))
 @section('resumen')
     <strong>Utilidad Total:</strong> ${{ number_format($utilidadTotal, 2) }} ({{ number_format($margenTotal, 1) }}%)
 @endsection

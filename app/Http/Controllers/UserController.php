@@ -32,15 +32,17 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        $request->merge(['email' => User::normalizarCorreo($request->input('email'))]);
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|min:2|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
+            'password' => 'required|string|min:8|max:100|confirmed',
             'rol' => 'required|in:Dueno,Encargado,Obrero',
             'foto' => 'nullable|image|max:2048',
         ], [
             'email.unique' => 'El correo electrónico ya se encuentra registrado.',
             'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.confirmed' => 'Las dos contraseñas no coinciden. Escríbelas otra vez.',
         ]);
 
         $foto = $request->hasFile('foto') ? Almacen::guardar($request->file('foto'), 'usuarios') : null;
@@ -66,12 +68,14 @@ class UserController extends Controller
         $esUnoMismo = $usuario->id === auth()->id();
 
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|min:2|max:255',
             'rol' => 'required|in:Dueno,Encargado,Obrero',
             'foto' => 'nullable|image|max:2048',
-            'password' => 'nullable|string|min:8',
+            'password' => 'nullable|string|min:8|max:100|confirmed',
+            'activo' => 'nullable|boolean',
         ], [
             'password.min' => 'La nueva contraseña debe tener al menos 8 caracteres.',
+            'password.confirmed' => 'Las dos contraseñas no coinciden. Escríbelas otra vez.',
         ]);
 
         $datos = [

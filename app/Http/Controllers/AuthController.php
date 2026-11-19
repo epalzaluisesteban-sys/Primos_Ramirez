@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,6 +15,8 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
+        // Los correos se guardan en minúsculas: "Ana@Correo.com" entra igual que "ana@correo.com"
+        $request->merge(['email' => User::normalizarCorreo($request->input('email'))]);
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],

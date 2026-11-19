@@ -91,6 +91,7 @@
                 <th style="text-align: right;">Costo U.</th>
                 <th style="text-align: right;">Total</th>
                 <th>Proveedor</th>
+                <th>Pago</th>
                 <th>Registrado Por</th>
             </tr>
         </thead>
@@ -103,11 +104,12 @@
                     <td style="text-align: right;">${{ number_format($compra->precio_compra, 2) }}</td>
                     <td style="text-align: right;">${{ number_format($compra->total, 2) }}</td>
                     <td>{{ $compra->nombreProveedor() }}</td>
+                    <td>{{ $compra->tipo_pago === 'credito' ? 'Crédito' . ($compra->vence_el ? ' (vence ' . $compra->vence_el->format('d/m/Y') . ')' : '') : 'Contado' }}</td>
                     <td>{{ $compra->usuario->name ?? 'Sistema' }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 15px;">No hay compras registradas.</td>
+                    <td colspan="8" style="text-align: center; padding: 15px;">No hay compras registradas.</td>
                 </tr>
             @endforelse
         </tbody>

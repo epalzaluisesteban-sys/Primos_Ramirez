@@ -7,6 +7,7 @@ use App\Models\Venta;
 use App\Models\Producto;
 use App\Models\DetalleVenta;
 use App\Models\Cliente;
+use App\Models\Categoria;
 use App\Support\Cantidad;
 use App\Support\Moneda;
 use Illuminate\Http\Request;
@@ -20,13 +21,40 @@ class VentaController extends Controller
 {
     public function index(Request $request)
     {
-        $ventas = $this->ventasFiltradas($request);
-
-        $totalPeriodo = $ventas->sum('total');
-        $totalPeriodoVes = $ventas->sum(fn ($v) => $v->total_ves ?? Moneda::aVes($v->total));
         $enPapelera = Venta::where('anulada', true)->count();
+        $categorias = Categoria::orderBy('nombre')->get();
 
-        return view('ventas.index', compact('ventas', 'totalPeriodo', 'totalPeriodoVes', 'enPapelera'));
+        return view('ventas.index', $this->datosListado($request) + compact('enPapelera', 'categorias'));
+    }
+
+    /** Listado de ventas en PDF, con los mismos filtros (fechas y categoría) que la pantalla. */
+    public function listadoPdf(Request $request)
+    {
+        $pdf = Pdf::loadView('ventas.listado-pdf', $this->datosListado($request))->setPaper('letter', 'landscape');
+
+        return $this->entregarPdf($pdf, 'Ventas_' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Ventas filtradas y sus totales. Con categoría, además de las ventas que la incluyen, se suma solo
+     * lo vendido de esa categoría (una venta puede llevar frutas y verduras).
+     */
+    private function datosListado(Request $request): array
+    {
+        $ventas = $this->ventasFiltradas($request);
+        $categoria = $request->filled('categoria_id') ? Categoria::find($request->categoria_id) : null;
+
+        return [
+            'ventas' => $ventas,
+            'categoria' => $categoria,
+            'totalPeriodo' => $ventas->sum('total'),
+            'totalPeriodoVes' => $ventas->sum(fn ($v) => $v->total_ves ?? Moneda::aVes($v->total)),
+            'totalCategoria' => $categoria
+                ? round($ventas->flatMap->detalles->filter(fn ($d) => (int) $d->producto?->categoria_id === $categoria->id)->sum('subtotal'), 2)
+                : null,
+            'desde' => $request->fecha_inicio,
+            'hasta' => $request->fecha_fin,
+        ];
     }
 
     /**
@@ -72,6 +100,9 @@ class VentaController extends Controller
 
     public function create()
     {
+        if ($aviso = CierreCaja::avisoCajaPendiente()) {
+            return redirect()->route('caja.index')->withErrors(['error' => $aviso]);
+        }
         if (CierreCaja::estaCerrada(now())) {
             return redirect()->route('ventas.index')->withErrors(['error' => self::CAJA_CERRADA]);
         }
@@ -87,6 +118,9 @@ class VentaController extends Controller
 
     public function store(Request $request)
     {
+        if ($aviso = CierreCaja::avisoCajaPendiente()) {
+            return redirect()->route('caja.index')->withErrors(['error' => $aviso]);
+        }
         if (CierreCaja::estaCerrada(now())) {
             return back()->withErrors(['error' => self::CAJA_CERRADA])->withInput();
         }
@@ -266,7 +300,7 @@ class VentaController extends Controller
     {
         $venta->load(['usuario', 'detalles.producto']);
         $pdf = Pdf::loadView('ventas.pdf', compact('venta'));
-        return $pdf->download('Comprobante_Venta_#' . $venta->id . '.pdf');
+        return $this->entregarPdf($pdf, 'Comprobante_Venta_#' . $venta->id . '.pdf');
     }
 
     /**
@@ -276,7 +310,8 @@ class VentaController extends Controller
     public function ticket(Venta $venta)
     {
         $venta->load(['usuario', 'cliente', 'detalles.producto']);
-        return view('ventas.ticket', compact('venta'));
+
+        return $this->entregarTicket('ventas.ticket', compact('venta'), 17 + 2 * $venta->detalles->count(), "Ticket_venta_{$venta->id}.pdf");
     }
 
     /**
@@ -315,10 +350,21 @@ class VentaController extends Controller
     // Ventas del listado y del CSV: las de la papelera no salen aquí.
     private function ventasFiltradas(Request $request)
     {
+        $request->validate([
+            'fecha_inicio' => 'nullable|date',
+            'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio',
+            'categoria_id' => 'nullable|integer|exists:categorias,id',
+        ], [
+            'fecha_fin.after_or_equal' => 'La fecha "Hasta" no puede ser anterior a "Desde".',
+        ]);
+
         return Venta::with(['usuario', 'cliente', 'detalles.producto'])
             ->where('anulada', false)
             ->when($request->filled('fecha_inicio'), fn ($q) => $q->whereDate('created_at', '>=', $request->fecha_inicio))
             ->when($request->filled('fecha_fin'), fn ($q) => $q->whereDate('created_at', '<=', $request->fecha_fin))
+            ->when($request->filled('categoria_id'), fn ($q) => $q->whereHas(
+                'detalles.producto', fn ($p) => $p->where('categoria_id', $request->categoria_id)
+            ))
             ->latest()
             ->get();
     }
@@ -326,12 +372,18 @@ class VentaController extends Controller
     private function validarVenta(Request $request): void
     {
         $request->validate([
-            'productos' => 'required|array|min:1',
-            'productos.*.id' => 'required|exists:productos,id',
-            'productos.*.cantidad' => 'required|numeric|min:0.001',
+            'productos' => 'required|array|min:1|max:100',
+            'productos.*.id' => 'required|integer|distinct|exists:productos,id',
+            'productos.*.cantidad' => 'required|numeric|min:0.001|max:999999',
             'tipo_pago' => 'nullable|in:contado,credito',
             'moneda_pago' => 'nullable|in:USD,VES',
             'cliente_id' => ['nullable', Rule::exists('clientes', 'id')->where('activo', true)],
+        ], [
+            'productos.required' => 'Agrega al menos un producto a la venta.',
+            'productos.*.id.required' => 'Elige el producto en cada línea (o quita la línea vacía).',
+            'productos.*.id.distinct' => 'Elegiste el mismo producto en dos líneas: deja una sola y suma la cantidad.',
+            'productos.*.cantidad.min' => 'La cantidad de cada producto tiene que ser mayor que 0.',
+            'cliente_id.exists' => 'Ese cliente no existe o está desactivado.',
         ]);
 
         if ($request->tipo_pago === 'credito' && !$request->cliente_id) {

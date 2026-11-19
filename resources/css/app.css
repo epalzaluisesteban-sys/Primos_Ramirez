@@ -38,21 +38,21 @@
     /* --- Contenedor de página: dos anchos para todo el sistema ---
        .pagina: listados, detalles, reportes, ventas. .pagina-angosta: formularios de crear/editar y perfil. */
     .pagina {
-        @apply max-w-7xl mx-auto px-4 py-6 sm:py-8;
+        @apply max-w-7xl mx-auto px-4 py-4 sm:py-8;
     }
     .pagina-angosta {
-        @apply max-w-3xl mx-auto px-4 py-6 sm:py-8;
+        @apply max-w-3xl mx-auto px-4 py-4 sm:py-8;
     }
 
     /* --- Encabezado de página (lo arma <x-encabezado>) --- */
     .encabezado-pagina {
-        @apply flex items-start gap-4 mb-6 pb-4 border-b border-stone-200 dark:border-stone-700;
+        @apply flex items-start gap-4 mb-4 pb-3 sm:mb-6 sm:pb-4 border-b border-stone-200 dark:border-stone-700;
     }
     .titulo-pagina {
-        @apply font-display text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100;
+        @apply font-display text-xl sm:text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100;
     }
     .subtitulo-pagina {
-        @apply text-sm text-stone-500 dark:text-stone-400 mt-1;
+        @apply text-[13px] sm:text-sm text-stone-500 dark:text-stone-400 mt-1;
     }
     /* Título de un bloque dentro de la página (Resumen, ¿Qué quieres hacer?) */
     .titulo-seccion {
@@ -61,7 +61,8 @@
 
     /* --- Tarjetas --- */
     .tarjeta {
-        @apply bg-white dark:bg-stone-800 rounded-md border border-stone-200 dark:border-stone-700 p-6;
+        /* Menos relleno en el celular: cada tarjeta ocupa menos alto y hay que bajar menos */
+        @apply bg-white dark:bg-stone-800 rounded-md border border-stone-200 dark:border-stone-700 p-4 sm:p-6;
     }
     .titulo-tarjeta {
         @apply font-display text-base font-bold text-stone-800 dark:text-stone-100;
@@ -71,7 +72,7 @@
         @apply text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400;
     }
     .cifra-valor {
-        @apply font-display text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1;
+        @apply font-display text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1;
     }
     /* Menú desplegable del nav (notificaciones, usuario, grupos) */
     .menu-desplegable {
@@ -92,6 +93,11 @@
                dark:bg-stone-900 dark:border-stone-600 dark:text-stone-100 dark:placeholder:text-stone-500
                disabled:opacity-60 disabled:cursor-not-allowed;
     }
+    /* Alto fijo para los campos de una línea: Chrome ignora line-height en <select> y, con zoom, redondea los bordes
+       de forma distinta en input y select. Así miden siempre igual (10+20+10 de contenido + 2 de borde = 42px). */
+    input.campo, select.campo {
+        @apply h-[2.625rem];
+    }
     .campo-archivo {
         @apply w-full text-sm text-stone-600 dark:text-stone-300
                file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:font-semibold
@@ -99,7 +105,8 @@
                dark:file:bg-emerald-900/40 dark:file:text-emerald-300 dark:hover:file:bg-emerald-900/60;
     }
     .casilla {
-        @apply rounded border-stone-300 dark:border-stone-600 text-emerald-600 focus:ring-emerald-500;
+        /* accent-color pinta casillas y radios nativos (text-* solo sirve con el plugin de formularios, que no se usa) */
+        @apply rounded border-stone-300 dark:border-stone-600 accent-emerald-600 focus:ring-emerald-500;
     }
     .ayuda-campo {
         @apply text-[11px] text-stone-500 dark:text-stone-400 mt-1;
@@ -110,8 +117,9 @@
 
     /* --- Botones --- */
     .btn, .btn-primario, .btn-secundario, .btn-oscuro, .btn-peligro {
+        /* Borde transparente en todos y alto mínimo de un .campo: junto a un campo (filtros) miden igual, también con zoom */
         @apply inline-flex items-center justify-center gap-2 font-semibold px-4 py-2.5 rounded-md text-sm transition
-               disabled:opacity-60 disabled:cursor-not-allowed;
+               border border-transparent min-h-[2.625rem] disabled:opacity-60 disabled:cursor-not-allowed;
     }
     .btn-primario {
         @apply bg-emerald-700 hover:bg-emerald-800 text-white;
@@ -128,7 +136,7 @@
         @apply bg-rose-600 hover:bg-rose-700 text-white;
     }
     .btn-sm {
-        @apply px-3 py-1.5 text-xs gap-1.5;
+        @apply px-3 py-1.5 text-xs gap-1.5 min-h-0;
     }
 
     /* Botones solo con ícono (editar, borrar, ver…) */
@@ -210,10 +218,10 @@
         @apply text-stone-500 dark:text-stone-400 uppercase text-xs border-b border-stone-200 dark:border-stone-700;
     }
     .tabla th {
-        @apply py-3 px-4 font-semibold;
+        @apply py-3 px-3 sm:px-4 font-semibold;
     }
     .tabla td {
-        @apply py-3 px-4;
+        @apply py-3 px-3 sm:px-4;
     }
     .tabla tbody tr {
         @apply border-b border-stone-100 dark:border-stone-700/60 last:border-0 hover:bg-stone-50 dark:hover:bg-stone-700/40;

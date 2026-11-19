@@ -10,8 +10,10 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\CompraController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CajaController;
+use App\Http\Controllers\GastoController;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\ProveedorController;
+use App\Http\Controllers\PagoProveedorController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\MermaController;
 use App\Http\Controllers\EstadisticaController;
@@ -40,12 +42,20 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/caja/{caja}/cerrar', [CajaController::class, 'cerrar'])->name('caja.cerrar');
     Route::get('caja-exportar-excel', [CajaController::class, 'exportarExcel'])->name('caja.excel');
     Route::get('caja-exportar-pdf', [CajaController::class, 'exportarPDF'])->name('caja.pdf');
+    Route::get('/caja/{caja}/reporte', [CajaController::class, 'reporte'])->name('caja.reporte');
+    Route::get('/caja/{caja}/ticket', [CajaController::class, 'ticket'])->name('caja.ticket');
+    Route::get('/caja/{caja}', [CajaController::class, 'show'])->whereNumber('caja')->name('caja.show');
+
+    // Gastos pagados con el efectivo de la caja: todos los anotan y ven su registro
+    Route::get('/gastos', [GastoController::class, 'index'])->name('gastos.index');
+    Route::post('/gastos', [GastoController::class, 'store'])->name('gastos.store');
 
     // Módulo de Ventas y Reportes
     Route::resource('ventas', VentaController::class)->only(['index', 'create', 'store']);
     Route::get('ventas/{venta}/pdf', [VentaController::class, 'descargarPDF'])->name('ventas.pdf');
     Route::get('ventas/{venta}/ticket', [VentaController::class, 'ticket'])->name('ventas.ticket');
     Route::get('ventas-exportar-excel', [VentaController::class, 'exportarExcel'])->name('ventas.excel');
+    Route::get('ventas-exportar-pdf', [VentaController::class, 'listadoPdf'])->name('ventas.listado.pdf');
     Route::get('ventas/{venta}', [VentaController::class, 'show'])->whereNumber('venta')->name('ventas.show');
 
     // Registrar un cliente sin salir de la venta (nombre, teléfono y cédula; el límite de crédito se pone en Clientes)
@@ -75,6 +85,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('productos/{producto}/kardex', [ProductoController::class, 'kardex'])->name('productos.kardex');
         Route::get('productos/{producto}/kardex/excel', [ProductoController::class, 'kardexExcel'])->name('productos.kardex.excel');
         Route::get('productos/{producto}/kardex/pdf', [ProductoController::class, 'kardexPDF'])->name('productos.kardex.pdf');
+        Route::get('productos/{producto}/etiqueta', [ProductoController::class, 'etiquetaPdf'])->name('productos.etiqueta');
 
         // Gestión de Categorías
         Route::resource('categorias', CategoriaController::class)->except(['show', 'destroy']);
@@ -87,6 +98,11 @@ Route::middleware(['auth'])->group(function () {
         // Reabrir la caja de hoy si se cerró por error (queda anotado en sus observaciones)
         Route::put('/caja/{caja}/reabrir', [CajaController::class, 'reabrir'])->name('caja.reabrir');
 
+        // Quitar gastos anotados por error y exportar el reporte de gastos
+        Route::delete('/gastos/{gasto}', [GastoController::class, 'destroy'])->name('gastos.destroy');
+        Route::get('gastos-exportar-excel', [GastoController::class, 'exportarExcel'])->name('gastos.excel');
+        Route::get('gastos-exportar-pdf', [GastoController::class, 'exportarPDF'])->name('gastos.pdf');
+
         // Editar o mandar a la papelera ventas de hoy (con la caja abierta), y restaurarlas
         Route::get('ventas/{venta}/editar', [VentaController::class, 'edit'])->name('ventas.edit');
         Route::put('ventas/{venta}', [VentaController::class, 'update'])->name('ventas.update');
@@ -96,6 +112,9 @@ Route::middleware(['auth'])->group(function () {
 
         // Gestión de Proveedores
         Route::patch('proveedores/{proveedor}/activo', [ProveedorController::class, 'alternarActivo'])->name('proveedores.activo');
+        Route::post('proveedores/{proveedor}/pagos', [PagoProveedorController::class, 'store'])->name('proveedores.pagos.store');
+        Route::get('proveedores-deudas', [ProveedorController::class, 'deudas'])->name('proveedores.deudas');
+        Route::get('proveedores-deudas/pdf', [ProveedorController::class, 'deudasPdf'])->name('proveedores.deudas.pdf');
         Route::resource('proveedores', ProveedorController::class)
             ->except(['destroy'])
             ->parameters(['proveedores' => 'proveedor']);

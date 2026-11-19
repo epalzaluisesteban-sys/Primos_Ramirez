@@ -15,6 +15,9 @@ php artisan test                 # SQLite en memoria (phpunit.xml)
 ```
 
 - Producción: Render + Supabase (PostgreSQL y almacenamiento S3). Ver `DESPLIEGUE.md` y `render.yaml`.
+- Render corre **PHP 8.3** (`Dockerfile`: `php:8.3-apache`) y la PC puede tener otra versión: `composer.json` fija
+  `config.platform.php = 8.3.0` para que `composer update` no traiga paquetes que exijan un PHP más nuevo (el Dockerfile
+  instala con `--ignore-platform-reqs` y no lo detectaría). Si se sube la versión de PHP en el Dockerfile, cambia ambos.
 - `App\Support\SqlFecha` solo genera SQL para **MySQL y PostgreSQL**: el Dashboard, Reportes y Estadísticas
   no funcionan en SQLite, así que las pruebas no deben renderizar esas pantallas.
 
@@ -31,11 +34,20 @@ php artisan test                 # SQLite en memoria (phpunit.xml)
 | Encabezado de cada página (título, subtítulo, volver, acciones) | `<x-encabezado>` en `components/encabezado.blade.php` |
 | Moneda | `App\Support\Moneda`, directivas `@usd()`, `@ves()`, `@bs()` y `<x-precio>` |
 | Fotos (local o S3) | `App\Support\Almacen`; el disco `public` tiene `serve` activo en `config/filesystems.php` para que se vean aunque falte el enlace |
-| Teléfonos y cédula/RIF (limpiar, validar, mostrar) | `App\Support\Contacto`, `<x-campo-telefono>` |
+| Teléfonos y cédula/RIF (limpiar, validar, mostrar) | `App\Support\Contacto` (`reglasDocumento()`), `<x-campo-telefono>`, `<x-campo-documento>` |
+| Datos únicos (no repetir productos, categorías, proveedores ni cédulas) | `App\Support\Unicidad`, trait `Models\Concerns\TieneNombreUnico` (columna `nombre_normalizado` con índice único) |
 | Campos de contraseña (con botón para verla) | `<x-campo-clave>`; el JS `alternarClave()` está en el layout |
 | Guía "Cómo usar" (menú del avatar, todos los roles) | `resources/views/ayuda/`: capítulos en `index.blade.php`, una pantalla de muestra por parcial y la animación/práctica en `_script.blade.php`. Todo en memoria del navegador: **sin `<form>` ni `name=`** (lo vigila `GuiaUsoTest`). Si cambia una regla del negocio, actualiza su capítulo |
 | Línea de tiempo (Dashboard e Historial) | `App\Services\ActividadService` |
-| Exportar CSV | `Controller::descargarCsv()`; PDF con `barryvdh/laravel-dompdf` (`*/pdf.blade.php`) |
+| Caja: cuadre, reporte del día (PDF) y ticket del cierre | `CajaService`, `CajaController`, `caja/reporte-pdf`, `caja/ticket` |
+| Gastos (pantalla aparte en Ventas → Gastos: anotar, registro con filtros, CSV y PDF) | `GastoController`, `gastos/index`, `gastos/pdf`; la caja solo muestra el resumen del día |
+| Ventanas flotantes (formularios "Nuevo…" y fichas) | `<x-ventana id>` + botón `data-abrir-ventana="id"`; el form lleva `<input type="hidden" name="_ventana" value="id">` para reabrirse con errores. Fichas: `<tr data-ficha="url" data-titulo>` y el controlador responde un parcial `_ficha`/`_detalle` si `$request->ajax()` (ventas, productos, clientes, proveedores, caja). Botones de la fila dentro de `data-acciones`. Script en el layout |
+| Filtros y tablas en el celular | `<x-filtros id :activos>` pliega el formulario bajo un botón; columnas secundarias con `hidden sm:table-cell` (la ficha muestra el resto) |
+| Proveedores: lo que distribuyen, crédito, pagos y "Lo que debemos" | `ProveedorController` (`deudas`, `deudasPdf`), `PagoProveedorController`, `Proveedor::estadoDeuda()`, `proveedores/deudas` |
+| Exportar CSV y PDF | `Controller::descargarCsv()`; PDF con `barryvdh/laravel-dompdf` (`*/pdf.blade.php`, layout `pdf.layout`) siempre por `Controller::entregarPdf()` (`?ver=1` lo abre para imprimir, sin él se descarga). `<x-acciones-exportar>` pone Excel, PDF e Imprimir: **imprimir nunca es `window.print()` de la pantalla** |
+| Tickets de 80 mm (venta y cierre de caja) | PDF con layout `pdf.ticket` y `Controller::entregarTicket()` (alto según las líneas) |
+| Etiqueta del producto (código de barras y QR) | `App\Support\Etiqueta` (SVG en el servidor con `picqer/php-barcode-generator` y `chillerlan/php-qrcode`, sin GD); vista del kardex y PDF de 100 × 45 mm en `productos.etiqueta` |
+| Filtros de reportes | `?categoria_id=` en productos, ventas y ganancias (`<x-selector-categoria>`); `?estado=con_deuda|sin_deuda` en clientes. La pantalla, el CSV y el PDF usan el mismo método de datos |
 | Respaldo y restauración (solo Dueño, menú Administración) | `App\Services\RespaldoService` (lista fija `TABLAS` en orden de dependencias), `RespaldoController`, middleware `BloquearDuranteRestauracion` |
 
 **Respaldos:** un solo `.json` de texto plano (formato 2: datos por tabla y, al final, las fotos en base64),
@@ -64,11 +76,22 @@ Comprobar con `esDueno()`, `esEncargadoOSuperior()` o el middleware `role:`; nun
   vuelve a descontar el stock y revisa el límite de crédito. El listado de ventas y su CSV no muestran las anuladas.
 - El cliente es opcional en ventas de contado (queda en su ficha, no suma deuda) y obligatorio en fiado. Desde la venta
   se registra un cliente nuevo por fetch (`clientes.rapido`, todos los roles, sin límite de crédito).
-- **Caja diaria:** efectivo esperado = fondo inicial + ventas de **contado** + **abonos** del día (por moneda).
-  Solo se registran ventas y abonos con la caja de **hoy abierta** (`CierreCaja::estaAbierta()`; si no, se manda a abrirla).
+- **Caja diaria:** efectivo esperado = fondo inicial + ventas de **contado** + **abonos** − **gastos** del día (por moneda),
+  − **pagos a proveedores con efectivo de caja**, calculado en `App\Services\CajaService` (pantalla, cierre, gastos,
+  reporte PDF y ticket del día).
+  **Una caja por fecha** (índice único en `cierre_cajas.fecha`). Si quedó abierta la caja de un día anterior
+  (`CierreCaja::pendienteAnterior()`), no se abre la de hoy ni se registran ventas, abonos o gastos hasta cerrarla.
+  Solo se registran ventas, abonos y gastos con la caja de **hoy abierta** (`CierreCaja::estaAbierta()`; si no, se manda a abrirla).
+  Gastos: pantalla propia (`gastos.index`), cualquier rol los anota y ve su registro; solo Encargado/Dueño los quitan
+  (solo con la caja abierta) y exportan el reporte.
   Con la caja del día **cerrada** no se registran ventas ni abonos y no se editan/anulan ventas (`CierreCaja::estaCerrada()`).
   El cierre se calcula con la fecha de la caja, no con "hoy".
   Encargado o Dueño pueden **reabrir** la caja de hoy (`caja.reabrir`); el cierre anterior queda anotado en `observaciones`.
+- **Proveedores y lo que se les debe:** cada proveedor marca las categorías que distribuye (`categoria_proveedor`) y si
+  da crédito (`da_credito`, `dias_credito`). Una compra es `contado` o `credito`; a crédito solo con proveedor registrado
+  que da crédito, y lleva `vence_el` = hoy + días. Deuda = compras a crédito − pagos (`PagoProveedor`), nunca un pago
+  mayor a la deuda; los pagos cubren primero las compras más viejas (`Proveedor::estadoDeuda()`). Un pago con
+  efectivo de caja (`cierre_caja_id`) necesita la caja de hoy abierta y se resta del cuadre. Pantalla `proveedores.deudas`.
 - **Saldo de cliente** = ventas a crédito no anuladas − abonos. Respetar `limite_credito` si existe.
   **Crédito disponible** = límite − saldo, nunca negativo; `null` = sin límite (`Cliente::creditoDisponible()`).
 - **Stock:** solo cambia por Compras (+), Ventas (−), Mermas (−) o `AjusteInventario::registrar()` (±, con motivo).
@@ -77,6 +100,10 @@ Comprobar con `esDueno()`, `esEncargadoOSuperior()` o el middleware `role:`; nun
   (costo desconocido) no entra en la ganancia ni en el margen (Dashboard y Reporte de Ganancias): se avisa aparte.
 - **Historial protegido:** las llaves foráneas son `RESTRICT`. Usuarios, productos, clientes y proveedores con
   movimientos se **desactivan** (`activo = false`), no se eliminan. Productos inactivos no se venden ni se compran.
+- **Sin duplicados** (índice único en BD + regla en el controlador, también contra los desactivados; mayúsculas,
+  tildes y espacios no cuentan): producto = nombre + marca por unidad de medida, y código de barras; categoría y
+  proveedor por nombre; cédula/RIF de clientes y de proveedores. Los repetidos viejos (migración o respaldo
+  anterior) los corrige `Unicidad::corregir()` sin borrar: "(repetido 2)" en el nombre o el documento pasa a las notas.
 - Cantidades con hasta 3 decimales solo en productos por peso o volumen (kg, lb, litro). Los que se cuentan
   (`Producto::UNIDADES_ENTERAS`: unidad, caja, atado, saco) van **sin decimales** en ventas, compras, mermas y existencias
   (`Producto::errorCantidad()`; en las vistas `data-entero` + `data-ayuda` en cada `<option>` y
@@ -90,6 +117,9 @@ Comprobar con `esDueno()`, `esEncargadoOSuperior()` o el middleware `role:`; nun
   `lockForUpdate()`, y responder `redirect()->...->with('success', '...')` o `back()->withErrors(['error' => '...'])->withInput()`.
 - Mensajes al usuario en español sencillo, diciendo qué hacer ("Desactívalo en su lugar…").
 - Formularios: `@csrf`, `old('campo', $modelo->campo ?? '')`, `data-confirm="..."` en acciones destructivas.
+  **Todo campo validado** en el servidor (texto con `max`, números con `min` y `max`, fechas, `in`/`exists`), y en la vista
+  `id` + `<label for>` + `@error` debajo + los mismos límites en HTML. Mensajes en `lang/es/validation.php`: si agregas
+  un campo, suma su nombre legible en `attributes`. Los correos se guardan en minúsculas (`User::normalizarCorreo()`).
 - Vistas compartidas crear/editar en `_form.blade.php`. Colores: paleta verde/naranja/rojo con `stone` de base y modo oscuro (`dark:`).
 - **Piezas de interfaz** en `resources/css/app.css` (ya traen modo oscuro); úsalas en vez de copiar clases largas:
   `pagina`, `pagina-angosta`, `titulo-pagina`, `subtitulo-pagina`, `titulo-seccion`, `tarjeta`, `titulo-tarjeta`,
@@ -108,6 +138,11 @@ En `.claude/skills/`:
 - `formularios`: campos, validación, errores, montos en $ y Bs., accesibilidad. Siempre que toques un `<form>`.
 - `agregar-modulo`: pasos para un módulo o CRUD nuevo de punta a punta.
 - `probar-cambios`: pruebas y verificación en el navegador antes de dar algo por terminado.
+- `caja-diaria`: una caja por día, cerrar la anterior antes de vender, gastos del día y reporte de cierre.
+- `datos-unicos`: índices únicos, `Rule::unique`, normalizar antes de comparar y validar todos los campos.
+- `reportes-pdf`: reportes con datos compartidos pantalla/CSV/PDF, filtros, tickets e imprimir como PDF.
+- `ui-pixel-auditor`: auditoría visual detallada (alineación de campos, espaciados, bordes, desbordes y móvil).
+  Al revisar diseños, maquetación, CSS o formularios.
 - `antislop`: filtro contra texto, diseño y código genérico de IA (relleno, emojis, degradados, comentarios
   obvios, try/catch que tragan errores, archivos de resumen). **Obligatoria** antes de dar por terminado
   cualquier cambio en vistas, textos, CSS o lógica.

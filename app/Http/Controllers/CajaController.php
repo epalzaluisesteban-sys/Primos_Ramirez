@@ -2,77 +2,68 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Abono;
 use App\Models\CierreCaja;
-use App\Models\Venta;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\Gasto;
+use App\Services\CajaService;
 use App\Support\Moneda;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CajaController extends Controller
 {
-    /**
-     * Efectivo que entra al cajón en el día, por moneda: ventas de contado (sin anuladas)
-     * más abonos cobrados. Lo cobrado en $ y lo cobrado en Bs. se cuentan por separado, como
-     * el efectivo físico. Las ventas a crédito no mueven efectivo hasta que el cliente abona.
-     */
-    private function resumenDelDia(?string $fecha = null): array
+    public function __construct(private CajaService $cajas)
     {
-        $dia = $fecha ? Carbon::parse($fecha)->toDateString() : now()->toDateString();
-
-        $contado = Venta::whereDate('fecha', $dia)->where('anulada', false)->where('tipo_pago', 'contado');
-        $contadoUsd = (float) (clone $contado)->where('moneda_pago', 'USD')->sum('total');
-        $contadoVes = (float) (clone $contado)->where('moneda_pago', 'VES')->sum('total_ves');
-        $credito = (float) Venta::whereDate('fecha', $dia)->where('anulada', false)->where('tipo_pago', 'credito')->sum('total');
-
-        $abonos = Abono::whereDate('fecha', $dia);
-        $abonosUsd = (float) (clone $abonos)->where('moneda', 'USD')->sum('monto');
-        $abonosVes = (float) (clone $abonos)->where('moneda', 'VES')->sum('monto_moneda');
-
-        return [
-            'contado_usd' => $contadoUsd,
-            'contado_ves' => $contadoVes,
-            'abonos_usd' => $abonosUsd,
-            'abonos_ves' => $abonosVes,
-            'credito' => $credito,
-            'ingresos_usd' => round($contadoUsd + $abonosUsd, 2),
-            'ingresos_ves' => round($contadoVes + $abonosVes, 2),
-        ];
     }
 
     public function index()
     {
-        $cajaHoy = CierreCaja::whereDate('fecha', now()->toDateString())->first();
-        $resumen = $this->resumenDelDia();
+        // Si quedó abierta la caja de un día anterior, el panel muestra esa para cerrarla primero
+        $cajaPendiente = CierreCaja::pendienteAnterior();
+        $caja = $cajaPendiente ?? CierreCaja::whereDate('fecha', now()->toDateString())->first();
+
+        $dia = $caja->fecha ?? now();
+        $resumen = $this->cajas->resumen($dia);
+        $esperado = $caja ? $this->cajas->esperado($caja, $resumen) : null;
+        $gastos = Gasto::with('usuario')->whereDate('fecha', Carbon::parse($dia)->toDateString())->latest('fecha')->get();
         $historialCierres = CierreCaja::with('usuario')->latest('fecha')->take(10)->get();
 
-        return view('caja.index', compact('cajaHoy', 'resumen', 'historialCierres'));
+        return view('caja.index', compact('caja', 'cajaPendiente', 'resumen', 'esperado', 'gastos', 'historialCierres'));
     }
 
     public function abrir(Request $request)
     {
         $request->validate([
-            'monto_apertura' => 'required|numeric|min:0',
-            'monto_apertura_ves' => 'nullable|numeric|min:0',
+            'monto_apertura' => 'required|numeric|min:0|max:99999999',
+            'monto_apertura_ves' => 'nullable|numeric|min:0|max:9999999999',
         ]);
 
-        $hoy = now()->toDateString();
-
-        $cajaExistente = CierreCaja::whereDate('fecha', $hoy)->first();
-        if ($cajaExistente) {
-            return back()->withErrors(['error' => 'Ya existe un registro de caja para la fecha de hoy.']);
+        if ($aviso = CierreCaja::avisoCajaPendiente()) {
+            return back()->withErrors(['error' => $aviso]);
         }
 
-        CierreCaja::create([
-            'user_id' => auth()->id(),
-            'fecha' => $hoy,
-            'monto_apertura' => $request->monto_apertura,
-            'monto_apertura_ves' => $request->monto_apertura_ves ?? 0,
-            'monto_ventas_sistema' => 0.00,
-            'estado' => 'ABIERTA',
-        ]);
+        $hoy = now()->toDateString();
+        $yaExiste = 'Ya existe un registro de caja para la fecha de hoy.';
+
+        if (CierreCaja::whereDate('fecha', $hoy)->exists()) {
+            return back()->withErrors(['error' => $yaExiste]);
+        }
+
+        // Si dos envíos llegan a la vez (doble clic), el índice único de la fecha frena el segundo
+        try {
+            CierreCaja::create([
+                'user_id' => auth()->id(),
+                'fecha' => $hoy,
+                'monto_apertura' => $request->monto_apertura,
+                'monto_apertura_ves' => $request->monto_apertura_ves ?? 0,
+                'monto_ventas_sistema' => 0.00,
+                'estado' => 'ABIERTA',
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            return back()->withErrors(['error' => $yaExiste]);
+        }
 
         return redirect()->route('caja.index')->with('success', 'Jornada/Caja abierta correctamente.');
     }
@@ -80,8 +71,8 @@ class CajaController extends Controller
     public function cerrar(Request $request, CierreCaja $caja)
     {
         $request->validate([
-            'monto_efectivo_real' => 'required|numeric|min:0',
-            'monto_efectivo_real_ves' => 'nullable|numeric|min:0',
+            'monto_efectivo_real' => 'required|numeric|min:0|max:99999999',
+            'monto_efectivo_real_ves' => 'nullable|numeric|min:0|max:9999999999',
             'observaciones' => 'nullable|string|max:500',
         ]);
 
@@ -90,11 +81,8 @@ class CajaController extends Controller
         }
 
         // Se cuadra contra los movimientos del día de ESA caja (puede cerrarse al día siguiente)
-        $resumen = $this->resumenDelDia($caja->fecha);
-
-        // Esperado por moneda = fondo inicial + efectivo ingresado en el día
-        $esperadoUsd = round($caja->monto_apertura + $resumen['ingresos_usd'], 2);
-        $esperadoVes = round($caja->monto_apertura_ves + $resumen['ingresos_ves'], 2);
+        $resumen = $this->cajas->resumen($caja->fecha);
+        $esperado = $this->cajas->esperado($caja, $resumen);
 
         // Diferencia = efectivo contado - esperado (negativo = faltante)
         $realVes = (float) ($request->monto_efectivo_real_ves ?? 0);
@@ -102,16 +90,24 @@ class CajaController extends Controller
         $caja->update([
             'monto_ventas_sistema' => $resumen['ingresos_usd'],
             'monto_ventas_sistema_ves' => $resumen['ingresos_ves'],
+            // Todo lo que salió del cajón: gastos del día y pagos a proveedores en efectivo
+            'monto_gastos' => $resumen['salidas_usd'],
+            'monto_gastos_ves' => $resumen['salidas_ves'],
             'monto_efectivo_real' => $request->monto_efectivo_real,
             'monto_efectivo_real_ves' => $realVes,
-            'diferencia' => round($request->monto_efectivo_real - $esperadoUsd, 2),
-            'diferencia_ves' => round($realVes - $esperadoVes, 2),
+            'diferencia' => round($request->monto_efectivo_real - $esperado['usd'], 2),
+            'diferencia_ves' => round($realVes - $esperado['ves'], 2),
             'estado' => 'CERRADA',
+            'cerrada_por' => auth()->id(),
+            'cerrada_at' => now(),
             // Si la caja se reabrió antes, se conserva la nota de cada reapertura
             'observaciones' => trim(($caja->observaciones ? $caja->observaciones . "\n" : '') . $request->observaciones) ?: null,
         ]);
 
-        return redirect()->route('caja.index')->with('success', 'Cierre de caja completado y guardado correctamente.');
+        $otraPendiente = CierreCaja::pendienteAnterior() ? ' Todavía queda otra caja de un día anterior sin cerrar.' : '';
+
+        return redirect()->route('caja.index')
+            ->with('success', 'Caja del ' . $caja->fechaCorta() . ' cerrada. Ya puedes descargar el reporte del día.' . $otraPendiente);
     }
 
     /**
@@ -124,7 +120,7 @@ class CajaController extends Controller
         if ($caja->estado !== 'CERRADA') {
             return back()->withErrors(['error' => 'Esta caja ya está abierta.']);
         }
-        if (Carbon::parse($caja->fecha)->toDateString() !== now()->toDateString()) {
+        if (!$caja->esDeHoy()) {
             return back()->withErrors(['error' => 'Solo se puede reabrir la caja de hoy. Las de días anteriores quedan como se cerraron.']);
         }
 
@@ -144,17 +140,44 @@ class CajaController extends Controller
             'monto_efectivo_real_ves' => null,
             'diferencia' => 0,
             'diferencia_ves' => null,
+            'cerrada_por' => null,
+            'cerrada_at' => null,
             'observaciones' => trim(($caja->observaciones ? $caja->observaciones . "\n" : '') . $nota),
         ]);
 
         return redirect()->route('caja.index')->with('success', 'Caja reabierta. Ya puedes registrar ventas y abonos; al terminar, ciérrala de nuevo.');
     }
 
+    /** Detalle de una caja del historial: el listado lo pide por fetch y lo muestra en la ventana flotante. */
+    public function show(Request $request, CierreCaja $caja)
+    {
+        $datos = $this->cajas->reporte($caja);
+
+        return view($request->ajax() ? 'caja._detalle' : 'caja.show', $datos);
+    }
+
+    /** PDF con todo lo que se hizo en el día de la caja: cuadre, ventas, productos, fiados, abonos y gastos. */
+    public function reporte(CierreCaja $caja)
+    {
+        $pdf = Pdf::loadView('caja.reporte-pdf', $this->cajas->reporte($caja));
+
+        return $this->entregarPdf($pdf, 'Caja_' . Carbon::parse($caja->fecha)->format('Y-m-d') . '.pdf');
+    }
+
+    /** Ticket de 80 mm con el cierre del día y lo vendido por producto. */
+    public function ticket(CierreCaja $caja)
+    {
+        $datos = $this->cajas->reporte($caja);
+        $lineas = 24 + 2 * $datos['productos']->count() + ($datos['gastos']->isEmpty() ? 0 : 2 + $datos['gastos']->count());
+
+        return $this->entregarTicket('caja.ticket', $datos, $lineas, 'Cierre_caja_' . Carbon::parse($caja->fecha)->format('Y-m-d') . '.pdf');
+    }
+
     public function exportarExcel(): StreamedResponse
     {
         $cierres = CierreCaja::with('usuario')->latest('fecha')->get();
         return $this->descargarCsv('historial_caja_' . now()->format('Y-m-d_His') . '.csv', function (callable $fila) use ($cierres) {
-            $fila(['Fecha', 'Usuario', 'Apertura $', 'Apertura Bs.', 'Ingresos $', 'Ingresos Bs.', 'Efectivo Real $', 'Efectivo Real Bs.', 'Diferencia $', 'Diferencia Bs.', 'Estado', 'Observaciones']);
+            $fila(['Fecha', 'Usuario', 'Apertura $', 'Apertura Bs.', 'Ingresos $', 'Ingresos Bs.', 'Gastos $', 'Gastos Bs.', 'Efectivo Real $', 'Efectivo Real Bs.', 'Diferencia $', 'Diferencia Bs.', 'Estado', 'Observaciones']);
 
             foreach ($cierres as $c) {
                 $fila([
@@ -164,6 +187,8 @@ class CajaController extends Controller
                     number_format($c->monto_apertura_ves, 2, '.', ''),
                     number_format($c->monto_ventas_sistema ?? 0, 2, '.', ''),
                     number_format($c->monto_ventas_sistema_ves ?? 0, 2, '.', ''),
+                    number_format($c->monto_gastos ?? 0, 2, '.', ''),
+                    number_format($c->monto_gastos_ves ?? 0, 2, '.', ''),
                     $c->monto_efectivo_real !== null ? number_format($c->monto_efectivo_real, 2, '.', '') : '',
                     $c->monto_efectivo_real_ves !== null ? number_format($c->monto_efectivo_real_ves, 2, '.', '') : '',
                     $c->diferencia !== null ? number_format($c->diferencia, 2, '.', '') : '',
@@ -181,6 +206,6 @@ class CajaController extends Controller
         $cierres = CierreCaja::with('usuario')->latest('fecha')->get();
 
         $pdf = Pdf::loadView('caja.pdf', compact('cierres'));
-        return $pdf->download('Historial_Caja_' . now()->format('Y-m-d') . '.pdf');
+        return $this->entregarPdf($pdf, 'Historial_Caja_' . now()->format('Y-m-d') . '.pdf');
     }
 }

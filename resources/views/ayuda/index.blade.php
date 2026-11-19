@@ -22,13 +22,14 @@
             'texto' => [
                 'Es lo primero del día: cuenta el efectivo con el que empiezas (el fondo), en dólares y en bolívares, y abre la caja.',
             ],
-            'regla' => 'Sin la caja abierta no se puede vender ni cobrar abonos. Hay una sola caja por día.',
+            'regla' => 'Sin la caja abierta no se puede vender, cobrar abonos ni anotar gastos. Hay una sola caja por día, y si la de un día anterior quedó abierta hay que cerrarla antes de abrir la de hoy.',
         ],
         [
             'id' => 'compra', 'titulo' => 'Comprar mercancía', 'quien' => 'encargado', 'pantalla' => 'Compras',
             'texto' => [
                 'Cuando llega mercancía del proveedor se registra como compra: el stock sube y el sistema calcula el costo promedio del producto.',
                 'Con ese costo se sabe cuánto se gana en cada venta.',
+                'Si el proveedor da crédito, la compra se puede registrar «A crédito»: queda como deuda en su ficha y en «Lo que debemos», con su fecha de vencimiento. Cuando se le paga, se anota en su ficha (con efectivo de la caja o desde otra cuenta).',
             ],
             'regla' => 'El stock solo cambia por compras, ventas, mermas o ajustes con motivo. Así el kardex siempre cuadra con lo que hay.',
         ],
@@ -44,6 +45,7 @@
             'id' => 'fiado', 'titulo' => 'Vender fiado', 'quien' => 'todos', 'pantalla' => 'Nueva venta',
             'texto' => [
                 'Si el cliente se lleva la mercancía y paga después, elige «Fiado» y el cliente. No entra dinero a la caja: sube lo que el cliente debe.',
+                'Cada cédula o RIF es de un solo cliente. Si al registrar uno nuevo el sistema dice que la cédula ya existe, búscalo en la lista: ya está registrado.',
             ],
             'regla' => 'Si el cliente tiene límite de crédito, el sistema no deja fiarle más de lo que le queda disponible.',
         ],
@@ -73,14 +75,18 @@
         [
             'id' => 'cierre', 'titulo' => 'Cerrar la caja', 'quien' => 'todos', 'pantalla' => 'Caja',
             'texto' => [
+                'Si durante el día se paga algo con el efectivo de la caja (flete, comida, un servicio), anótalo en el menú Ventas → Gastos con su monto y la moneda en que se pagó. Ahí también ves el registro de todos los gastos y sacas su reporte.',
                 'Al final del día cuenta el efectivo del cajón, en dólares y en bolívares. El sistema lo compara con lo que debería haber y dice si sobra o falta.',
+                'Al cerrar puedes descargar el reporte del día en PDF (ventas, productos vendidos, fiados, abonos y gastos) y el ticket del cierre.',
             ],
-            'regla' => 'Esperado = fondo inicial + ventas de contado + abonos del día. Con la caja cerrada no se vende más ese día; si se cerró por error, el Encargado puede reabrirla.',
+            'regla' => 'Esperado = fondo inicial + ventas de contado + abonos − gastos y pagos a proveedores hechos con efectivo de la caja. Con la caja cerrada no se vende más ese día; si se cerró por error, el Encargado puede reabrirla.',
         ],
         [
             'id' => 'revisar', 'titulo' => 'Revisar el negocio', 'quien' => 'encargado', 'pantalla' => 'Reportes',
             'texto' => [
                 'Con lo registrado, el sistema arma el kardex de cada producto, el reporte de ganancias, las estadísticas y el historial. Todo se puede bajar en Excel o PDF.',
+                'Productos, ventas y ganancias se pueden ver por categoría (frutas, verduras, hortalizas…), y los clientes separados entre los que deben y los que no. El Excel y el PDF salen con el mismo filtro.',
+                '«Imprimir» abre el PDF en otra pestaña para mandarlo a la impresora; los tickets también son PDF.',
             ],
             'regla' => 'Lo vendido de productos sin compras no tiene costo conocido: no entra en la ganancia y se avisa aparte.',
         ],

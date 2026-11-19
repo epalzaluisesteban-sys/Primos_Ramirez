@@ -46,6 +46,7 @@
                 @include('usuarios._rol', ['seleccionado' => old('rol', $usuario->rol), 'bloqueado' => $esYo, 'idCampo' => $usuario->id])
 
                 <x-campo-clave name="password" label="Nueva contraseña (opcional)" placeholder="Déjala en blanco para no cambiarla" autocomplete="new-password" minlength="8" />
+                <x-campo-clave name="password_confirmation" label="Repite la nueva contraseña" placeholder="Solo si la cambias" autocomplete="new-password" minlength="8" />
 
                 @unless($esYo)
                     <label class="caja-suave flex items-start gap-3 p-3 cursor-pointer">

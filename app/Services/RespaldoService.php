@@ -6,6 +6,7 @@ use App\Exceptions\RespaldoInvalido;
 use App\Models\CierreCaja;
 use App\Models\Respaldo;
 use App\Support\Almacen;
+use App\Support\Unicidad;
 use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
@@ -47,6 +48,7 @@ class RespaldoService
         'users' => 'Usuarios',
         'categorias' => 'Categorías',
         'proveedores' => 'Proveedores',
+        'categoria_proveedor' => 'Lo que distribuye cada proveedor',
         'clientes' => 'Clientes',
         'tasas_cambio' => 'Tasas BCV',
         'productos' => 'Productos',
@@ -57,7 +59,12 @@ class RespaldoService
         'mermas' => 'Pérdidas',
         'ajustes_inventario' => 'Ajustes de inventario',
         'cierre_cajas' => 'Cierres de caja',
+        'gastos' => 'Gastos de caja',
+        'pagos_proveedor' => 'Pagos a proveedores',
     ];
+
+    // Tablas que se agregaron después del formato 2: un respaldo anterior no las trae y se restauran vacías
+    private const TABLAS_POSTERIORES = ['gastos', 'categoria_proveedor', 'pagos_proveedor'];
 
     // Columna con la ruta de la foto en el disco de fotos (App\Support\Almacen)
     private const COLUMNAS_FOTO = ['users' => 'foto', 'categorias' => 'imagen', 'clientes' => 'foto', 'productos' => 'foto'];
@@ -94,6 +101,13 @@ class RespaldoService
 
         $manifiesto = $respaldo['manifiesto'];
         foreach (array_keys(self::TABLAS) as $tabla) {
+            if (in_array($tabla, self::TABLAS_POSTERIORES, true)
+                && !isset($manifiesto['tablas'][$tabla]) && !array_key_exists($tabla, $respaldo['datos'] ?? [])) {
+                $respaldo['datos'][$tabla] = [];
+                $respaldo['manifiesto']['tablas'][$tabla] = 0;
+                continue;
+            }
+
             $filas = $respaldo['datos'][$tabla] ?? null;
             if (!is_array($filas) || !array_is_list($filas) || count($filas) !== ($manifiesto['tablas'][$tabla] ?? -1)) {
                 throw new RespaldoInvalido('El respaldo está incompleto o fue modificado (' . self::TABLAS[$tabla] . '). Usa otro archivo.');
@@ -243,7 +257,9 @@ class RespaldoService
                     }
                     foreach (array_keys(self::TABLAS) as $tabla) {
                         $booleanas = $this->columnasBooleanas($tabla);
-                        foreach (array_chunk($respaldo['datos'][$tabla], 200) as $lote) {
+                        // Un respaldo de antes de las reglas de datos únicos puede traer repetidos
+                        $filas = Unicidad::corregir($tabla, $respaldo['datos'][$tabla]);
+                        foreach (array_chunk($filas, 200) as $lote) {
                             DB::table($tabla)->insert(array_map(fn ($fila) => $this->normalizar($fila, $booleanas), $lote));
                         }
                     }

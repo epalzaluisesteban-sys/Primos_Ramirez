@@ -18,6 +18,36 @@ class Contacto
     public const TIPOS_DOCUMENTO = ['V', 'E', 'J', 'G', 'P'];
 
     /**
+     * Reglas de los campos documento_tipo + documento_numero (el número ya sin puntos ni guiones, ver
+     * limpiarNumeroDocumento()). $otroDueno recibe el documento unido ("V-12345678") y devuelve el mensaje
+     * de error si ya lo tiene otro registro, o null.
+     */
+    public static function reglasDocumento(\Closure $otroDueno): array
+    {
+        return [
+            'documento_tipo' => ['nullable', 'required_with:documento_numero', \Illuminate\Validation\Rule::in(self::TIPOS_DOCUMENTO)],
+            'documento_numero' => [
+                'bail',
+                'nullable',
+                'regex:/^\d{6,9}$/',
+                function ($atributo, $valor, $falla) use ($otroDueno) {
+                    $tipo = request('documento_tipo');
+                    if (in_array($tipo, ['J', 'G'], true) && strlen($valor) !== 9) {
+                        $falla('El RIF de una empresa (J o G) lleva 9 números, incluido el último dígito (ej. 12345678-9).');
+                    } elseif ($mensaje = $otroDueno(self::unirDocumento($tipo, $valor))) {
+                        $falla($mensaje);
+                    }
+                },
+            ],
+        ];
+    }
+
+    public static function limpiarNumeroDocumento(?string $numero): ?string
+    {
+        return preg_replace('/[\s\.\-]/', '', (string) $numero) ?: null;
+    }
+
+    /**
      * Quita los separadores que la gente suele escribir (espacios, guiones, puntos, paréntesis, +)
      * y pasa el formato internacional 58XXXXXXXXXX a 0XXXXXXXXXX. Las letras se dejan tal cual
      * para que la validación las rechace.

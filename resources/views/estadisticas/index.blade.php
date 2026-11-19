@@ -19,7 +19,7 @@
         <div class="tarjeta mb-8">
             <h3 class="titulo-tarjeta mb-4">Este mes vs. mes anterior
             </h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
                 <div>
                     <p class="cifra-etiqueta">Ventas</p>
                     <p class="font-display text-xl font-bold text-stone-800 mt-1 dark:text-stone-100">${{ number_format($comparacionMensual['ventas_actual'], 2) }}</p>
@@ -56,14 +56,14 @@
         </div>
 
         <!-- Tarjetas resumen de mermas -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div class="tarjeta">
+        <div class="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div class="tarjeta p-4">
                 <p class="cifra-etiqueta">Valor perdido por pérdidas de mercancía (6 meses)</p>
-                <p class="cifra-valor text-rose-600">${{ number_format($totalMermaValor, 2) }}</p>
+                <p class="cifra-valor text-rose-600 dark:text-rose-400">@usd($totalMermaValor)</p>
             </div>
-            <div class="tarjeta">
+            <div class="tarjeta p-4">
                 <p class="cifra-etiqueta">Unidades perdidas (6 meses)</p>
-                <p class="font-display text-2xl font-bold text-stone-800 mt-1 dark:text-stone-100">{{ $totalMermaUnidades }}</p>
+                <p class="cifra-valor">@cantidad($totalMermaUnidades)</p>
             </div>
         </div>
 

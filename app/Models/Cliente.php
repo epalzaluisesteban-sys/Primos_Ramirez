@@ -57,6 +57,26 @@ class Cliente extends Model
     }
 
     /**
+     * Desde cuándo debe: fecha del fiado más viejo que todavía no termina de pagar. Los abonos
+     * cubren primero los fiados más viejos. null si no debe nada.
+     */
+    public function deudaDesde(): ?\Illuminate\Support\Carbon
+    {
+        $porCubrir = $this->totalAbonado();
+        $fiados = $this->ventas()->where('tipo_pago', 'credito')->where('anulada', false)->orderBy('fecha')->orderBy('id')->get(['fecha', 'total']);
+
+        foreach ($fiados as $fiado) {
+            $cubierto = min($porCubrir, (float) $fiado->total);
+            $porCubrir -= $cubierto;
+            if ((float) $fiado->total - $cubierto > 0.005) {
+                return $fiado->fecha;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Cuánto más se le puede fiar = límite de crédito − saldo pendiente (nunca negativo).
      * null = sin límite (se le puede fiar cualquier monto). Si ya se calculó el saldo, se pasa
      * para no repetir las consultas.

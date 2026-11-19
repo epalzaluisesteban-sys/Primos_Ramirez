@@ -9,18 +9,19 @@
             <x-acciones-exportar :excel="route('historial.excel', request()->only(['desde','hasta']))" :pdf="route('historial.pdf', request()->only(['desde','hasta']))" />
         </x-encabezado>
 
-        <!-- Filtro de fechas -->
-        <form method="GET" class="tarjeta p-4 mb-8 flex flex-wrap items-end gap-4 no-print">
+        <form method="GET" class="tarjeta p-4 mb-4 sm:mb-8 grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3 sm:gap-4 no-print">
             <div>
-                <label class="etiqueta">Desde</label>
-                <input type="date" name="desde" value="{{ $desde }}" class="campo">
+                <label class="etiqueta" for="historial-desde">Desde</label>
+                <input type="date" id="historial-desde" name="desde" value="{{ $desde }}" class="campo @error('desde') border-rose-500 @enderror">
+                @error('desde') <p class="error-campo">{{ $message }}</p> @enderror
             </div>
             <div>
-                <label class="etiqueta">Hasta</label>
-                <input type="date" name="hasta" value="{{ $hasta }}" class="campo">
+                <label class="etiqueta" for="historial-hasta">Hasta</label>
+                <input type="date" id="historial-hasta" name="hasta" value="{{ $hasta }}" class="campo @error('hasta') border-rose-500 @enderror">
+                @error('hasta') <p class="error-campo">{{ $message }}</p> @enderror
             </div>
-            <button type="submit" class="btn-oscuro">
-                Filtrar
+            <button type="submit" class="btn-oscuro col-span-2">
+                <x-icon name="search" class="w-4 h-4" /> Filtrar
             </button>
         </form>
 

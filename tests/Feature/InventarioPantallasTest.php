@@ -146,6 +146,26 @@ class InventarioPantallasTest extends TestCase
             ->assertSee('Los movimientos cuadran con el stock actual.');
     }
 
+    public function test_tocar_un_producto_abre_su_ficha_en_la_ventana_flotante(): void
+    {
+        $producto = $this->producto(['marca' => 'Del Valle']);
+        AjusteInventario::registrar($producto, 10, 'Inventario inicial', $this->dueno->id);
+
+        // El listado ya no tiene el botón de consultar: la fila lleva a la ficha
+        $this->actingAs($this->dueno)->get(route('productos.index'))
+            ->assertOk()
+            ->assertSee('data-ficha="' . route('productos.kardex', $producto) . '"', false)
+            ->assertDontSee('Consultar Kardex');
+
+        // Pedida por fetch devuelve solo la ficha, sin el layout
+        $this->actingAs($this->dueno)->get(route('productos.kardex', $producto), ['X-Requested-With' => 'XMLHttpRequest'])
+            ->assertOk()
+            ->assertSee('Últimos movimientos')
+            ->assertSee('Kardex completo')
+            ->assertSee('+10')
+            ->assertDontSee('<html', false);
+    }
+
     public function test_las_alertas_llevan_a_compras_con_el_producto_elegido(): void
     {
         $agotado = $this->producto(['stock' => 0]);

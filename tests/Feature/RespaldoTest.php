@@ -144,6 +144,37 @@ class RespaldoTest extends TestCase
         Storage::disk('public')->assertExists('usuarios/dueno.png');
     }
 
+    public function test_un_respaldo_de_antes_de_los_gastos_se_restaura_con_gastos_vacios(): void
+    {
+        $antes = $this->foto();
+        $respaldo = $this->crearRespaldo();
+        $json = json_decode(Storage::disk('local')->get($respaldo->ruta()), true);
+        unset($json['tablas']['gastos'], $json['registros']['gastos'], $json['columnas']['gastos']);
+        Storage::disk('local')->put($respaldo->ruta(), json_encode($json));
+
+        $this->restaurarConfirmando($this->subir($this->archivoDe($respaldo)));
+
+        $this->assertEquals($antes, $this->foto());
+        $this->assertSame(0, DB::table('gastos')->count());
+    }
+
+    public function test_un_respaldo_con_cedulas_repetidas_se_restaura_corrigiendolas(): void
+    {
+        Cliente::create(['nombre' => 'Beto', 'rif' => 'V-12345678']);
+        $respaldo = $this->crearRespaldo();
+        $json = json_decode(Storage::disk('local')->get($respaldo->ruta()), true);
+        // Así quedaban los respaldos hechos antes de que la cédula fuera única
+        $json['tablas']['clientes'][0]['rif'] = 'V-12345678';
+        Storage::disk('local')->put($respaldo->ruta(), json_encode($json));
+
+        $this->restaurarConfirmando($this->subir($this->archivoDe($respaldo)));
+
+        $this->assertSame('V-12345678', Cliente::where('nombre', 'Ana')->value('rif'));
+        $beto = Cliente::where('nombre', 'Beto')->first();
+        $this->assertNull($beto->rif);
+        $this->assertStringContainsString('V-12345678, que ya es del cliente Ana', $beto->notas);
+    }
+
     public function test_un_json_editado_con_datos_que_no_existen_se_rechaza_sin_tocar_nada(): void
     {
         $respaldo = $this->crearRespaldo();

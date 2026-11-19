@@ -13,6 +13,9 @@ Sigue este orden. Todo en español (nombres de tablas, modelos, rutas, textos).
 - Si el registro puede "dejar de usarse", agrega `boolean('activo')->default(true)` en lugar de permitir borrarlo.
 - Dinero: `decimal(10,2)` en USD; si guarda Bs., también `tasa_cambio decimal(14,4)`. Cantidades: `decimal(10,3)`.
 - Índice en las columnas `fecha` que se filtren en reportes.
+- Lo que no se puede repetir lleva índice único y su regla en el controlador (skill `datos-unicos`).
+- Súmala a `RespaldoService::TABLAS` después de las tablas que referencia, y a `TABLAS_POSTERIORES` para que los
+  respaldos hechos antes de existir la tabla se sigan restaurando.
 
 ## 2. Modelo
 - `$fillable` explícito, `$casts` (`'activo' => 'boolean'`, `'fecha' => 'datetime'`, cantidades `'float'`).
@@ -20,7 +23,8 @@ Sigue este orden. Todo en español (nombres de tablas, modelos, rutas, textos).
 - Si afecta stock, usa `AjusteInventario::registrar()` o el patrón de Compra/Merma; si es efectivo, revisa `CierreCaja::estaCerrada()`.
 
 ## 3. Controlador
-- `app/Http/Controllers/<Nombre>Controller.php`, validación con `$request->validate([...])`.
+- `app/Http/Controllers/<Nombre>Controller.php`, validación con `$request->validate([...])` de **todos** los campos
+  (con `max`), y el nombre de cada campo nuevo en `lang/es/validation.php` → `attributes` (lo vigila `RevisionGeneralTest`).
 - Operaciones de stock/dinero en `DB::transaction` + `lockForUpdate()`.
 - Éxito: `redirect()->route('x.index')->with('success', 'Texto corto.')`.
   Error: `back()->withErrors(['error' => 'Qué pasó y qué hacer.'])->withInput()`.
@@ -31,8 +35,9 @@ Sigue este orden. Todo en español (nombres de tablas, modelos, rutas, textos).
 - Recursos con `->parameters([...])` si el plural en español no es regular (ej. `proveedores` → `proveedor`).
 
 ## 5. Vistas (`resources/views/<modulo>/`)
-- `@extends('layouts.app')`, `@section('title', ...)`, contenedor `max-w-7xl mx-auto px-4 py-8`.
-- Encabezado: `titulo-pagina` + `subtitulo-pagina` con una frase que explique para qué sirve la pantalla.
+- `@extends('layouts.app')`, `@section('title', ...)`, contenedor `pagina` (o `pagina-angosta` en crear/editar).
+- Encabezado con `<x-encabezado titulo subtitulo>`: el subtítulo explica en una frase para qué sirve la pantalla.
+- Exportaciones con `<x-acciones-exportar>` y PDF por `Controller::entregarPdf()` (skill `reportes-pdf`).
 - Listado, crear/editar y detalle siguen los patrones de la skill `interfaz` (modelo: `proveedores/`):
   `tarjeta`, `tabla`, `tabla-vacia`, insignias, `btn-icono-*` con `title`.
 - Formulario compartido en `_form.blade.php` (ver skill `formularios`).

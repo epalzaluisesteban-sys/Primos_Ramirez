@@ -99,7 +99,7 @@
             </section>
 
             <section class="tarjeta p-0 overflow-hidden lg:col-span-2" aria-labelledby="titulo-historial">
-                <div class="flex items-center gap-2 px-6 py-4 border-b border-stone-200 dark:border-stone-700">
+                <div class="flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-200 dark:border-stone-700">
                     <h2 id="titulo-historial" class="titulo-tarjeta">Respaldos guardados en el servidor</h2>
                     <span class="insignia-gris">{{ $respaldos->count() }}</span>
                 </div>
@@ -161,7 +161,7 @@
                         </tbody>
                     </table>
                 </div>
-                <p class="px-6 py-3 border-t border-stone-200 dark:border-stone-700 text-[11px] text-stone-500 dark:text-stone-400">
+                <p class="px-4 sm:px-6 py-3 border-t border-stone-200 dark:border-stone-700 text-[11px] text-stone-500 dark:text-stone-400">
                     En el servidor de internet estas copias pueden borrarse cuando se actualiza el sistema. El respaldo seguro es el archivo que descargas.
                 </p>
             </section>

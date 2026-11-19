@@ -10,7 +10,8 @@
     <div class="pagina">
 
         <x-encabezado titulo="Ganancias" subtitulo="Utilidad, margen y comparativos del negocio en el periodo elegido.">
-            <x-acciones-exportar :excel="route('reportes.ganancias.excel', request()->only(['desde','hasta']))" :pdf="route('reportes.ganancias.pdf', request()->only(['desde','hasta']))" />
+            @php $filtros = array_filter(request()->only(['desde', 'hasta', 'categoria_id'])); @endphp
+            <x-acciones-exportar :excel="route('reportes.ganancias.excel', $filtros)" :pdf="route('reportes.ganancias.pdf', $filtros)" />
         </x-encabezado>
 
         @if($hayCostoDesconocido)
@@ -25,43 +26,44 @@
             </div>
         @endif
 
-        <!-- Filtro de fechas -->
-        <form method="GET" class="tarjeta p-4 mb-8 flex flex-wrap items-end gap-4">
+        <x-filtros id="filtros-ganancias" :activos="count($filtros)" class="tarjeta p-4 mb-4 sm:mb-8 no-print">
+        <form method="GET" class="grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3 sm:gap-4">
             <div>
-                <label class="etiqueta">Desde</label>
-                <input type="date" name="desde" value="{{ $desde }}" class="campo">
+                <label class="etiqueta" for="ganancias-desde">Desde</label>
+                <input type="date" id="ganancias-desde" name="desde" value="{{ $desde }}" class="campo">
             </div>
             <div>
-                <label class="etiqueta">Hasta</label>
-                <input type="date" name="hasta" value="{{ $hasta }}" class="campo">
+                <label class="etiqueta" for="ganancias-hasta">Hasta</label>
+                <input type="date" id="ganancias-hasta" name="hasta" value="{{ $hasta }}" class="campo @error('hasta') border-rose-500 @enderror">
+                @error('hasta') <p class="error-campo">{{ $message }}</p> @enderror
             </div>
+            <x-selector-categoria :categorias="$categorias" :valor="$categoria?->id" id="ganancias-categoria" envoltura="col-span-2" />
             <button type="submit" class="btn-oscuro">
-                Filtrar
+                <x-icon name="search" class="w-4 h-4" /> Filtrar
             </button>
-            @if($desde || $hasta)
-                <a href="{{ route('reportes.ganancias') }}" class="text-sm text-stone-500 hover:underline dark:text-stone-400">Limpiar filtro</a>
+            @if($filtros)
+                <a href="{{ route('reportes.ganancias') }}" class="btn-secundario">Quitar filtro</a>
             @endif
         </form>
+        </x-filtros>
 
         <!-- KPIs -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="tarjeta">
-                <p class="text-xs font-bold text-stone-500 uppercase dark:text-stone-400">Ingresos</p>
-                <x-precio :usd="$ingresoTotal" class="mt-1 text-2xl font-black text-stone-800 dark:text-stone-100" />
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-8">
+            <div class="tarjeta p-4">
+                <p class="cifra-etiqueta">Ingresos</p>
+                <x-precio :usd="$ingresoTotal" class="cifra-valor" />
             </div>
-            <div class="tarjeta">
-                <p class="text-xs font-bold text-stone-500 uppercase dark:text-stone-400">Costo de mercancía vendida</p>
-                <x-precio :usd="$costoTotal" class="mt-1 text-2xl font-black text-stone-800 dark:text-stone-100" />
+            <div class="tarjeta p-4">
+                <p class="cifra-etiqueta">Costo de mercancía vendida</p>
+                <x-precio :usd="$costoTotal" class="cifra-valor" />
             </div>
-            <div class="tarjeta">
-                <p class="text-xs font-bold text-stone-500 uppercase dark:text-stone-400">Utilidad bruta</p>
-                <p class="text-2xl font-black {{ $utilidadTotal >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400' }} mt-1">
-                    <x-precio :usd="$utilidadTotal" />
-                </p>
+            <div class="tarjeta p-4">
+                <p class="cifra-etiqueta">Utilidad bruta</p>
+                <x-precio :usd="$utilidadTotal" class="cifra-valor {{ $utilidadTotal >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' }}" />
             </div>
-            <div class="tarjeta">
-                <p class="text-xs font-bold text-stone-500 uppercase dark:text-stone-400">Margen de ganancia</p>
-                <p class="text-2xl font-black text-stone-800 mt-1 dark:text-stone-100">{{ number_format($margenTotal, 1) }}%</p>
+            <div class="tarjeta p-4">
+                <p class="cifra-etiqueta">Margen de ganancia</p>
+                <p class="cifra-valor">{{ number_format($margenTotal, 1) }}%</p>
             </div>
         </div>
 

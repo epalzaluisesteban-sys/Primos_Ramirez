@@ -16,12 +16,15 @@ class Compra extends Model
         'cantidad',
         'precio_compra',
         'total',
+        'tipo_pago',
+        'vence_el',
         'proveedor',
         'fecha',
     ];
 
+    protected $casts = ['cantidad' => 'float', 'vence_el' => 'date'];
+
     // Costo promedio ponderado por producto (SUM(cantidad*precio) / SUM(cantidad)), indexado por producto_id.
-    protected $casts = ['cantidad' => 'float'];
 
     public static function costosPromedio()
     {

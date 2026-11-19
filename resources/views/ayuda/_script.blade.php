@@ -48,8 +48,10 @@
         },
         cliente: { limite: 30, saldo: 0 },
         compras: [],
+        deudaProveedor: 0,
         ventas: [],
         abonos: [],
+        gastos: [],
         movimientos: [
             { producto: 'tomate', concepto: 'Inventario inicial', cantidad: 40 },
             { producto: 'aguacate', concepto: 'Inventario inicial', cantidad: 60 },
@@ -63,9 +65,12 @@
             contadoVes: contado.filter(v => v.moneda === 'VES').reduce((s, v) => s + v.totalVes, 0),
             abonosUsd: e.abonos.filter(a => a.moneda === 'USD').reduce((s, a) => s + a.montoMoneda, 0),
             abonosVes: e.abonos.filter(a => a.moneda === 'VES').reduce((s, a) => s + a.montoMoneda, 0),
+            gastosUsd: e.gastos.reduce((s, g) => s + g.monto, 0),
+            gastosVes: 0,
         };
-        r.esperadoUsd = redondear(e.fondo.usd + r.contadoUsd + r.abonosUsd);
-        r.esperadoVes = redondear(e.fondo.ves + r.contadoVes + r.abonosVes);
+        // Igual que CajaService::esperado(): fondo + contado + abonos − gastos
+        r.esperadoUsd = redondear(e.fondo.usd + r.contadoUsd + r.abonosUsd - r.gastosUsd);
+        r.esperadoVes = redondear(e.fondo.ves + r.contadoVes + r.abonosVes - r.gastosVes);
         return r;
     };
 
@@ -174,8 +179,10 @@
                 ['elegir', 'proveedor', 'ejemplo', 'Elige quién te lo vendió.'],
                 ['escribir', 'cantidad', '20', 'Escribe cuántos kg llegaron.'],
                 ['escribir', 'precio', '1.20', 'Y cuánto pagaste por cada kg.'],
+                ['elegir', 'pago', 'credito', 'Este proveedor da crédito: elige «A crédito». No sale dinero de la caja.'],
                 ['pulsar', 'registrar', 'Presiona «Registrar compra».'],
                 ['ver', 'costo', 'El stock subió de 40 a 60 kg y ya se conoce lo que cuesta el tomate: con eso se calcula la ganancia.'],
+                ['ver', 'deuda', 'Y quedó anotado que le debes $24.00, con fecha de vencimiento. Se ve en «Lo que debemos» y se paga desde la ficha del proveedor.'],
             ],
             acciones: {
                 registrar(e, v) {
@@ -185,16 +192,21 @@
                     if (v.proveedor !== 'ejemplo') return resultado(false, 'Elige el proveedor.');
                     const precio = numero(v.precio);
                     if (!(precio > 0)) return resultado(false, 'Escribe cuánto pagaste por cada ' + (p.entero ? 'unidad' : p.unidad) + '.');
+                    if (!v.pago) return resultado(false, 'Elige si la compra es de contado o a crédito.');
                     const antes = p.stock;
                     p.stock = redondear(p.stock + n, 3);
                     e.compras.push({ producto: v.producto, cantidad: n, precio });
                     e.movimientos.push({ producto: v.producto, concepto: 'Compra', cantidad: n });
-                    return resultado(true, 'Compra registrada. ' + p.nombre + ' pasó de ' + cantidad(antes) + ' a ' + cantidad(p.stock) + ' ' + unidadDe(p, p.stock) + '.');
+                    const total = redondear(n * precio);
+                    if (v.pago === 'credito') e.deudaProveedor = redondear(e.deudaProveedor + total);
+                    return resultado(true, 'Compra registrada. ' + p.nombre + ' pasó de ' + cantidad(antes) + ' a ' + cantidad(p.stock) + ' ' + unidadDe(p, p.stock) + '.'
+                        + (v.pago === 'credito' ? ' Le debes ' + usd(total) + ' al proveedor.' : ''));
                 },
             },
             pintar(e, c) {
                 const costo = costoPromedio(e, 'tomate');
                 salida(c, 'costo').textContent = costo === null ? 'todavía sin compras' : usd(costo) + ' por kg';
+                salida(c, 'deuda').textContent = usd(e.deudaProveedor);
                 pintarAyudaCantidad(e, c);
             },
         },
@@ -348,14 +360,29 @@
             practica: 'Escribe cuánto efectivo contaste y presiona «Cerrar caja». Prueba con montos distintos al esperado.',
             guion: [
                 ['decir', 'Fin del día. El sistema ya sabe cuánto efectivo debería haber en el cajón.'],
-                ['ver', 'resumen', 'Debería haber = fondo + ventas de contado + abonos. La venta fiada y la eliminada no cuentan.'],
-                ['escribir', 'realUsd', '25', 'Cuenta los dólares del cajón y escribe cuánto hay.'],
+                ['ver', 'resumen', 'Debería haber = fondo + ventas de contado + abonos − gastos. La venta fiada y la eliminada no cuentan.'],
+                ['decir', 'Hoy se pagó un flete de $2 con el efectivo del cajón: se anota como gasto (en el sistema, menú Ventas → Gastos).'],
+                ['escribir', 'gastoConcepto', 'Flete del camión'],
+                ['escribir', 'gastoMonto', '2'],
+                ['pulsar', 'gasto', 'Presiona «Anotar gasto». Lo que debería haber baja $2.'],
+                ['escribir', 'realUsd', e => (resumenCaja(e).esperadoUsd - 1).toFixed(2), 'Cuenta los dólares del cajón y escribe cuánto hay.'],
                 ['escribir', 'realVes', e => resumenCaja(e).esperadoVes.toFixed(2), 'Y los bolívares.'],
                 ['escribir', 'observaciones', 'Faltó $1 por un vuelto mal dado', 'Si falta o sobra, explícalo aquí.'],
                 ['pulsar', 'cerrar', 'Presiona «Cerrar caja».'],
                 ['decir', 'Faltó $1.00 y quedó anotado. Con la caja cerrada ya no se vende ese día; si se cerró por error, el Encargado puede reabrirla.'],
             ],
             acciones: {
+                gasto(e, v) {
+                    const err = errorCaja(e, 'anotar gastos');
+                    if (err) return resultado(false, err);
+                    if (v.gastoConcepto.trim().length < 3) return resultado(false, 'Escribe en qué se gastó (ej. Flete).');
+                    const monto = numero(v.gastoMonto);
+                    if (!(monto > 0)) return resultado(false, 'Escribe el monto del gasto, mayor que 0.');
+                    const disponible = resumenCaja(e).esperadoUsd;
+                    if (monto > disponible + 0.005) return resultado(false, 'El gasto es mayor que el efectivo en caja (' + usd(disponible) + ').');
+                    e.gastos.push({ concepto: v.gastoConcepto.trim(), monto: redondear(monto) });
+                    return resultado(true, 'Gasto anotado: ' + v.gastoConcepto.trim() + ' por ' + usd(monto) + '. Se resta de lo que debería haber en caja.');
+                },
                 cerrar(e, v) {
                     if (e.caja === 'cerrada') return resultado(false, 'Esta caja ya fue cerrada.');
                     if (e.caja === 'sin-abrir') return resultado(false, 'Primero abre la caja del día.');
@@ -378,6 +405,8 @@
                 salida(c, 'contado-ves').textContent = ves(r.contadoVes);
                 salida(c, 'abonos-usd').textContent = usd(r.abonosUsd);
                 salida(c, 'abonos-ves').textContent = ves(r.abonosVes);
+                salida(c, 'gastos-usd').textContent = '− ' + usd(r.gastosUsd);
+                salida(c, 'gastos-ves').textContent = '− ' + ves(r.gastosVes);
                 salida(c, 'esperado-usd').textContent = usd(r.esperadoUsd);
                 salida(c, 'esperado-ves').textContent = ves(r.esperadoVes);
             },

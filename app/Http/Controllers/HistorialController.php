@@ -39,14 +39,20 @@ class HistorialController extends Controller
         $datos = $this->datosHistorial($request);
 
         $pdf = Pdf::loadView('historial.pdf', $datos);
-        return $pdf->download('Historial_' . now()->format('Y-m-d') . '.pdf');
+        return $this->entregarPdf($pdf, 'Historial_' . now()->format('Y-m-d') . '.pdf');
     }
 
     // Bitácora global con filtro de fechas (misma línea de tiempo que el feed del Dashboard).
     private function datosHistorial(Request $request): array
     {
-        $desde = $request->input('desde', now()->subDays(30)->toDateString());
-        $hasta = $request->input('hasta', now()->toDateString());
+        $request->validate([
+            'desde' => 'nullable|date',
+            'hasta' => 'nullable|date|after_or_equal:desde',
+        ], [
+            'hasta.after_or_equal' => 'La fecha "Hasta" no puede ser anterior a "Desde".',
+        ]);
+        $desde = $request->input('desde') ?: now()->subDays(30)->toDateString();
+        $hasta = $request->input('hasta') ?: now()->toDateString();
 
         $inicio = \Carbon\Carbon::parse($desde)->startOfDay();
         $fin = \Carbon\Carbon::parse($hasta)->endOfDay();

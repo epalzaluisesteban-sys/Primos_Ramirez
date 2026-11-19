@@ -54,6 +54,17 @@ class User extends Authenticatable
         ];
     }
 
+    /** "  Ana@Correo.COM " → "ana@correo.com". El correo es único y en PostgreSQL las mayúsculas cuentan. */
+    public static function normalizarCorreo(?string $correo): ?string
+    {
+        return $correo === null ? null : mb_strtolower(trim($correo));
+    }
+
+    protected function email(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(set: fn (?string $valor) => self::normalizarCorreo($valor));
+    }
+
     // ==========================================
     // MÉTODOS DE JERARQUÍA DE ROLES
     // ==========================================

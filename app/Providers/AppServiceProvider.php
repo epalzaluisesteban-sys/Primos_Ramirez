@@ -95,7 +95,15 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 $cajaHoy = CierreCaja::whereDate('fecha', now()->toDateString())->first();
-                if (!$cajaHoy || $cajaHoy->estado === 'ABIERTA') {
+                if ($pendiente = CierreCaja::pendienteAnterior()) {
+                    $notificaciones->push([
+                        'tipo' => 'caja',
+                        'icono' => 'banknote',
+                        'color' => 'rose',
+                        'texto' => 'La caja del ' . $pendiente->fechaCorta() . ' quedó abierta. Ciérrala antes de vender hoy.',
+                        'url' => route('caja.index'),
+                    ]);
+                } elseif (!$cajaHoy || $cajaHoy->estado === 'ABIERTA') {
                     $notificaciones->push([
                         'tipo' => 'caja',
                         'icono' => 'banknote',

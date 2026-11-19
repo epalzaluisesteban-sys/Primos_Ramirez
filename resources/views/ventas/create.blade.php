@@ -5,15 +5,12 @@
 @section('content')
     <div class="pagina">
 
-        <x-encabezado titulo="Nueva venta" subtitulo="Agrega los productos y confirma el cobro." :volver="route('ventas.index')" />
+        <x-encabezado titulo="Nueva venta" subtitulo="Agrega los productos, elige cómo paga y confirma el cobro." :volver="route('ventas.index')" />
 
-        <div class="tarjeta">
-
-            @include('ventas._formulario', [
-                'venta' => null,
-                'accion' => route('ventas.store'),
-                'textoBoton' => 'Finalizar y cobrar venta',
-            ])
-        </div>
+        @include('ventas._formulario', [
+            'venta' => null,
+            'accion' => route('ventas.store'),
+            'textoBoton' => 'Finalizar y cobrar venta',
+        ])
     </div>
 @endsection

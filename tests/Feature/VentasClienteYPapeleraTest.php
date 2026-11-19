@@ -156,7 +156,7 @@ class VentasClienteYPapeleraTest extends TestCase
         $html = $this->actingAs($dueno)->get(route('ventas.index'))->assertOk()->getContent();
 
         // La fila abre el detalle; el ticket ya no está en la tabla (va dentro del detalle)
-        $this->assertStringContainsString('data-url="' . route('ventas.show', $hoy) . '"', $html);
+        $this->assertStringContainsString('data-ficha="' . route('ventas.show', $hoy) . '"', $html);
         $this->assertStringNotContainsString(route('ventas.ticket', $hoy), $html);
 
         $this->assertStringContainsString(route('ventas.edit', $hoy), $html);

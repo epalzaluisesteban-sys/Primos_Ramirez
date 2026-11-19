@@ -25,35 +25,31 @@
         </x-encabezado>
 
         <!-- KPIs -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div class="tarjeta">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div class="tarjeta p-4">
                 <p class="cifra-etiqueta">Saldo pendiente actual</p>
-                <p class="font-display text-2xl font-extrabold {{ $saldo > 0 ? 'text-orange-700 dark:text-orange-400' : 'text-emerald-700 dark:text-emerald-400' }} mt-1">
-                    <x-precio :usd="$saldo" />
-                </p>
+                <x-precio :usd="$saldo" class="cifra-valor {{ $saldo > 0 ? 'text-orange-700 dark:text-orange-400' : 'text-emerald-700 dark:text-emerald-400' }}" />
             </div>
-            <div class="tarjeta">
+            <div class="tarjeta p-4">
                 <p class="cifra-etiqueta">Crédito disponible</p>
                 @if($disponible === null)
-                    <p class="font-display text-2xl font-extrabold text-stone-800 dark:text-stone-100 mt-1">Sin límite</p>
+                    <p class="cifra-valor">Sin límite</p>
                     <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">Ponle un límite de crédito al editarlo si quieres controlar cuánto se le fía.</p>
                 @else
-                    <p class="font-display text-2xl font-extrabold {{ $disponible > 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400' }} mt-1">
-                        <x-precio :usd="$disponible" />
-                    </p>
+                    <x-precio :usd="$disponible" class="cifra-valor {{ $disponible > 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400' }}" />
                     <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">
                         Límite de crédito: @usd($cliente->limite_credito).
                         @if($disponible <= 0) No se le puede fiar más hasta que abone. @endif
                     </p>
                 @endif
             </div>
-            <div class="tarjeta">
+            <div class="tarjeta p-4">
                 <p class="cifra-etiqueta">Total comprado (histórico)</p>
-                <x-precio :usd="$totalComprado" class="mt-1 font-display text-2xl font-extrabold text-stone-800 dark:text-stone-100" />
+                <x-precio :usd="$totalComprado" class="cifra-valor" />
             </div>
-            <div class="tarjeta">
+            <div class="tarjeta p-4">
                 <p class="cifra-etiqueta">Última compra</p>
-                <p class="font-display text-2xl font-extrabold text-stone-800 dark:text-stone-100 mt-1">{{ $ultimaCompra ? $ultimaCompra->format('d/m/Y') : 'Sin compras' }}</p>
+                <p class="cifra-valor">{{ $ultimaCompra ? $ultimaCompra->format('d/m/Y') : 'Sin compras' }}</p>
             </div>
         </div>
 
@@ -68,6 +64,16 @@
                     <p class="text-sm text-stone-500 dark:text-stone-400 bg-stone-50 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-700 rounded-md p-4 text-center">
                         Este cliente no tiene saldo pendiente.
                     </p>
+                @elseif($estadoCaja === 'pendiente')
+                    <div class="aviso-ambar flex-col">
+                        <p class="flex items-start gap-2">
+                            <x-icon name="alert-triangle" class="w-4 h-4 shrink-0 mt-0.5" />
+                            <span>{{ \App\Models\CierreCaja::avisoCajaPendiente() }}</span>
+                        </p>
+                        <a href="{{ route('caja.index') }}" class="btn-primario btn-sm w-full mt-1">
+                            <x-icon name="lock" class="w-4 h-4" /> Ir a cerrar la caja
+                        </a>
+                    </div>
                 @elseif($estadoCaja === 'sin_abrir')
                     <div class="aviso-ambar flex-col">
                         <p class="flex items-start gap-2">
@@ -96,13 +102,15 @@
                                     <input type="radio" name="moneda" value="VES" @disabled(\App\Support\Moneda::tasa() <= 0) class="accent-emerald-600"> Bolívares (Bs.)
                                 </label>
                             </div>
-                            <label class="etiqueta">Monto abonado</label>
-                            <input type="number" step="0.01" min="0.01" name="monto" required class="campo">
+                            <label class="etiqueta" for="abono-monto">Monto abonado</label>
+                            <input type="number" id="abono-monto" step="0.01" min="0.01" max="9999999999" inputmode="decimal" name="monto" value="{{ old('monto') }}" required autofocus class="campo @error('monto') border-rose-500 @enderror">
                             <p class="text-[11px] text-stone-400 dark:text-stone-500 mt-1">Máximo: @usd($saldo) / @bs($saldo) (si paga en Bs. se convierte a la tasa BCV de hoy)</p>
+                            @error('monto') <p class="error-campo">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <label class="etiqueta">Notas (Opcional)</label>
-                            <textarea name="notas" rows="2" class="campo"></textarea>
+                            <label class="etiqueta" for="abono-notas">Notas (Opcional)</label>
+                            <textarea id="abono-notas" name="notas" rows="2" maxlength="500" class="campo @error('notas') border-rose-500 @enderror">{{ old('notas') }}</textarea>
+                            @error('notas') <p class="error-campo">{{ $message }}</p> @enderror
                         </div>
                         <button type="submit" class="btn-primario w-full">
                             <x-icon name="check" class="w-4 h-4" /> Registrar abono

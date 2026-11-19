@@ -7,50 +7,13 @@
 
         <x-encabezado titulo="Personal" subtitulo="Quién puede entrar al sistema y qué puede hacer cada uno.">
             <span class="insignia-violeta">{{ $usuarios->count() }} {{ $usuarios->count() === 1 ? 'usuario' : 'usuarios' }}</span>
+            <button type="button" data-abrir-ventana="ventana-usuario" class="btn bg-violet-800 hover:bg-violet-900 text-white"><x-icon name="plus" class="w-4 h-4" /> Registrar trabajador</button>
         </x-encabezado>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div>
 
-            <!-- Registrar trabajador -->
-            <div class="tarjeta">
-                <h3 class="titulo-tarjeta mb-4">Registrar trabajador</h3>
-
-                <form action="{{ route('usuarios.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
-                    @csrf
-
-                    <div>
-                        <label class="etiqueta" for="name">Nombre completo</label>
-                        <input id="name" type="text" name="name" value="{{ old('name') }}" required placeholder="Ej. Carlos Mendoza" class="campo @error('name') border-rose-500 @enderror">
-                        @error('name') <p class="error-campo">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div>
-                        <label class="etiqueta" for="email">Correo electrónico</label>
-                        <input id="email" type="email" name="email" value="{{ old('email') }}" required placeholder="usuario@primosramirez.com" class="campo @error('email') border-rose-500 @enderror">
-                        <p class="ayuda-campo">Lo usará para iniciar sesión.</p>
-                        @error('email') <p class="error-campo">{{ $message }}</p> @enderror
-                    </div>
-
-                    <x-campo-clave name="password" label="Contraseña inicial" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required minlength="8" />
-
-                    @include('usuarios._rol', ['seleccionado' => old('rol')])
-
-                    <div>
-                        <label class="etiqueta" for="foto">Foto (Opcional)</label>
-                        <input id="foto" type="file" name="foto" accept="image/*" class="campo-archivo">
-                        <p class="ayuda-campo">JPG o PNG, máximo 2MB.</p>
-                        @error('foto') <p class="error-campo">{{ $message }}</p> @enderror
-                    </div>
-
-                    <button type="submit" class="btn w-full bg-violet-800 hover:bg-violet-900 text-white">
-                        <x-icon name="plus" class="w-4 h-4" /> Guardar usuario
-                    </button>
-                </form>
-            </div>
-
-            <!-- Personal registrado -->
-            <div class="tarjeta lg:col-span-2 p-0 overflow-hidden">
-                <div class="px-6 py-4 border-b border-stone-200 dark:border-stone-700">
+            <div class="tarjeta p-0 overflow-hidden">
+                <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-200 dark:border-stone-700">
                     <h3 class="titulo-tarjeta">Personal registrado</h3>
                 </div>
 
@@ -60,8 +23,8 @@
                             <tr>
                                 <th>Usuario</th>
                                 <th>Rol</th>
-                                <th class="text-center">Estado</th>
-                                <th>Último acceso</th>
+                                <th class="hidden sm:table-cell text-center">Estado</th>
+                                <th class="hidden md:table-cell">Último acceso</th>
                                 <th class="text-right">Acciones</th>
                             </tr>
                         </thead>
@@ -100,14 +63,14 @@
                                         @endif
                                         <p class="text-[10px] text-stone-400 dark:text-stone-500 mt-1">{{ $user->nivelLabel() }}</p>
                                     </td>
-                                    <td class="text-center">
+                                    <td class="hidden sm:table-cell text-center">
                                         @if($user->activo)
                                             <span class="insignia-verde">Activo</span>
                                         @else
                                             <span class="insignia-roja">Sin acceso</span>
                                         @endif
                                     </td>
-                                    <td class="text-xs whitespace-nowrap">{{ $user->ultimo_acceso ? $user->ultimo_acceso->diffForHumans() : 'Nunca' }}</td>
+                                    <td class="hidden md:table-cell text-xs whitespace-nowrap">{{ $user->ultimo_acceso ? $user->ultimo_acceso->diffForHumans() : 'Nunca' }}</td>
                                     <td>
                                         <div class="flex justify-end items-center gap-2">
                                             <a href="{{ route('usuarios.edit', $user->id) }}" class="btn-icono-ambar" title="Editar datos, rol o contraseña">
@@ -154,7 +117,7 @@
                     </table>
                 </div>
 
-                <p class="px-6 py-3 border-t border-stone-200 dark:border-stone-700 text-[11px] text-stone-500 dark:text-stone-400 flex flex-wrap gap-x-4 gap-y-1">
+                <p class="px-4 sm:px-6 py-3 border-t border-stone-200 dark:border-stone-700 text-[11px] text-stone-500 dark:text-stone-400 flex flex-wrap gap-x-4 gap-y-1">
                     <span class="inline-flex items-center gap-1"><x-icon name="ban" class="w-3.5 h-3.5" /> Quitar acceso: para quien ya registró ventas u otros movimientos.</span>
                     <span class="inline-flex items-center gap-1"><x-icon name="trash" class="w-3.5 h-3.5" /> Eliminar: solo si nunca registró nada.</span>
                 </p>
@@ -163,4 +126,41 @@
         </div>
 
     </div>
+
+    <x-ventana id="ventana-usuario" titulo="Registrar trabajador" subtitulo="Con su correo y contraseña entra al sistema; el rol dice qué puede hacer.">
+        <form action="{{ route('usuarios.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+            @csrf
+            <input type="hidden" name="_ventana" value="ventana-usuario">
+
+            <div>
+                <label class="etiqueta" for="name">Nombre completo</label>
+                <input id="name" type="text" name="name" value="{{ old('name') }}" required placeholder="Ej. Carlos Mendoza" class="campo @error('name') border-rose-500 @enderror">
+                @error('name') <p class="error-campo">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label class="etiqueta" for="email">Correo electrónico</label>
+                <input id="email" type="email" name="email" value="{{ old('email') }}" required placeholder="usuario@primosramirez.com" class="campo @error('email') border-rose-500 @enderror">
+                <p class="ayuda-campo">Lo usará para iniciar sesión.</p>
+                @error('email') <p class="error-campo">{{ $message }}</p> @enderror
+            </div>
+
+            <x-campo-clave name="password" label="Contraseña inicial" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required minlength="8" />
+            <x-campo-clave name="password_confirmation" label="Repite la contraseña" placeholder="Escríbela otra vez" autocomplete="new-password" required minlength="8" />
+
+            @include('usuarios._rol', ['seleccionado' => old('rol')])
+
+            <div>
+                <label class="etiqueta" for="foto">Foto (Opcional)</label>
+                <input id="foto" type="file" name="foto" accept="image/*" class="campo-archivo">
+                <p class="ayuda-campo">JPG o PNG, máximo 2MB.</p>
+                @error('foto') <p class="error-campo">{{ $message }}</p> @enderror
+            </div>
+
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
+                <button type="button" data-cerrar-ventana class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn bg-violet-800 hover:bg-violet-900 text-white"><x-icon name="check" class="w-4 h-4" /> Guardar usuario</button>
+            </div>
+        </form>
+    </x-ventana>
 @endsection

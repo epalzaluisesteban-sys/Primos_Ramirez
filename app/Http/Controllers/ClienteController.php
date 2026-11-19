@@ -10,18 +10,43 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Support\Contacto;
 use App\Support\Moneda;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ClienteController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $clientes = $this->clientesConDatos('created_at', 'desc');
-        $totalPorCobrar = $clientes->sum('saldo');
+        return view('clientes.index', $this->datosClientes($request, 'created_at', 'desc'));
+    }
 
-        return view('clientes.index', compact('clientes', 'totalPorCobrar'));
+    // Filtro de la lista, el CSV y el PDF (?estado=...)
+    public const ESTADOS = ['todos' => 'Todos', 'con_deuda' => 'Con deuda', 'sin_deuda' => 'Sin deuda'];
+
+    /**
+     * Clientes según el filtro: con deuda (saldo > 0, primero los que más deben, con la fecha del fiado más viejo
+     * sin pagar) o sin deuda. Pantalla, CSV y PDF usan lo mismo.
+     */
+    private function datosClientes(Request $request, string $orderBy = 'nombre', string $direction = 'asc'): array
+    {
+        $estado = array_key_exists((string) $request->query('estado'), self::ESTADOS) ? $request->query('estado') : 'todos';
+        $todos = $this->clientesConDatos($orderBy, $direction);
+        $deben = fn ($c) => $c->saldo > 0.005;
+
+        $clientes = match ($estado) {
+            'con_deuda' => $todos->filter($deben)
+                ->each(fn ($c) => $c->deuda_desde = $c->deudaDesde())
+                ->sortByDesc('saldo')
+                ->values(),
+            'sin_deuda' => $todos->reject($deben)->values(),
+            default => $todos,
+        };
+
+        return [
+            'clientes' => $clientes,
+            'estado' => $estado,
+            'conteos' => ['todos' => $todos->count(), 'con_deuda' => $todos->filter($deben)->count(), 'sin_deuda' => $todos->reject($deben)->count()],
+            'totalPorCobrar' => $todos->sum('saldo'),
+        ];
     }
 
     public function create()
@@ -44,10 +69,11 @@ class ClienteController extends Controller
             });
     }
 
-    public function exportarExcel(): StreamedResponse
+    public function exportarExcel(Request $request): StreamedResponse
     {
-        $clientes = $this->clientesConDatos();
-        return $this->descargarCsv('clientes_' . now()->format('Y-m-d_His') . '.csv', function (callable $fila) use ($clientes) {
+        ['clientes' => $clientes, 'estado' => $estado] = $this->datosClientes($request);
+        $sufijo = $estado === 'todos' ? '' : '_' . $estado;
+        return $this->descargarCsv('clientes' . $sufijo . '_' . now()->format('Y-m-d_His') . '.csv', function (callable $fila) use ($clientes) {
             $fila(['Cliente', 'RIF', 'Teléfono', 'Dirección', 'Límite de Crédito', 'Última Compra', 'Total Comprado', 'Saldo Pendiente', 'Crédito Disponible', 'Estado']);
 
             foreach ($clientes as $c) {
@@ -68,13 +94,13 @@ class ClienteController extends Controller
         });
     }
 
-    public function exportarPDF()
+    public function exportarPDF(Request $request)
     {
-        $clientes = $this->clientesConDatos();
-        $totalPorCobrar = $clientes->sum('saldo');
+        $datos = $this->datosClientes($request);
+        $nombre = ['todos' => 'Clientes', 'con_deuda' => 'Clientes_con_deuda', 'sin_deuda' => 'Clientes_sin_deuda'][$datos['estado']];
 
-        $pdf = Pdf::loadView('clientes.pdf', compact('clientes', 'totalPorCobrar'));
-        return $pdf->download('Clientes_' . now()->format('Y-m-d') . '.pdf');
+        $pdf = Pdf::loadView('clientes.pdf', $datos);
+        return $this->entregarPdf($pdf, $nombre . '_' . now()->format('Y-m-d') . '.pdf');
     }
 
     /**
@@ -82,31 +108,32 @@ class ClienteController extends Controller
      * y los valida: el teléfono solo números (11 dígitos) y el documento tipo + solo números.
      * Devuelve el teléfono y el documento ya listos para guardar.
      */
-    private function validarCliente(Request $request, array $extra = []): array
+    private function validarCliente(Request $request, ?Cliente $cliente = null, array $extra = []): array
     {
         $request->merge([
+            'nombre' => preg_replace('/\s+/', ' ', trim((string) $request->input('nombre'))),
             'telefono' => Contacto::limpiarTelefono($request->input('telefono')),
-            'documento_numero' => preg_replace('/[\s\.\-]/', '', (string) $request->input('documento_numero')) ?: null,
+            'documento_numero' => Contacto::limpiarNumeroDocumento($request->input('documento_numero')),
         ]);
 
+        // Dos clientes no pueden tener la misma cédula/RIF, tampoco si uno está desactivado
+        $otroDueno = function (string $rif) use ($cliente) {
+            $otro = Cliente::where('rif', $rif)->when($cliente, fn ($q) => $q->whereKeyNot($cliente->id))->first();
+
+            return $otro
+                ? "Ya hay un cliente con esa cédula o RIF: {$otro->nombre}."
+                    . ($otro->activo ? ' Búscalo en la lista en vez de registrarlo de nuevo.' : ' Está desactivado; un encargado puede activarlo en Clientes.')
+                : null;
+        };
+
         $request->validate([
-            'nombre' => 'required|string|max:255',
+            'nombre' => 'required|string|min:2|max:255',
             'foto' => 'nullable|image|max:2048',
             'telefono' => Contacto::REGLA_TELEFONO,
-            'documento_tipo' => ['nullable', 'required_with:documento_numero', Rule::in(Contacto::TIPOS_DOCUMENTO)],
-            'documento_numero' => [
-                'nullable',
-                'regex:/^\d{6,9}$/',
-                function ($atributo, $valor, $falla) use ($request) {
-                    if (in_array($request->input('documento_tipo'), ['J', 'G'], true) && strlen($valor) !== 9) {
-                        $falla('El RIF de una empresa (J o G) lleva 9 números, incluido el último dígito (ej. 12345678-9).');
-                    }
-                },
-            ],
             'direccion' => 'nullable|string|max:500',
-            'limite_credito' => 'nullable|numeric|min:0',
+            'limite_credito' => 'nullable|numeric|min:0|max:99999999',
             'notas' => 'nullable|string|max:500',
-        ] + $extra);
+        ] + Contacto::reglasDocumento($otroDueno) + $extra);
 
         return [
             'telefono' => $request->input('telefono'),
@@ -136,13 +163,6 @@ class ClienteController extends Controller
     {
         $contacto = $this->validarCliente($request);
 
-        if ($contacto['rif'] && $existente = Cliente::where('rif', $contacto['rif'])->first()) {
-            throw ValidationException::withMessages([
-                'documento_numero' => "Ya hay un cliente con esa cédula o RIF: {$existente->nombre}."
-                    . ($existente->activo ? ' Elígelo en la lista.' : ' Está desactivado; pide a un encargado que lo active en Clientes.'),
-            ]);
-        }
-
         $cliente = Cliente::create(['nombre' => $request->input('nombre')] + $contacto);
 
         return response()->json(['id' => $cliente->id, 'nombre' => $cliente->nombre], 201);
@@ -155,7 +175,7 @@ class ClienteController extends Controller
 
     public function update(Request $request, Cliente $cliente)
     {
-        $contacto = $this->validarCliente($request, [
+        $contacto = $this->validarCliente($request, $cliente, [
             'activo' => 'nullable|boolean',
         ]);
 
@@ -195,8 +215,11 @@ class ClienteController extends Controller
         return redirect()->route('clientes.index')->with('success', 'Cliente eliminado.');
     }
 
-    // Muestra el detalle de cuenta corriente de un cliente: ventas a crédito + abonos
-    public function show(Cliente $cliente)
+    /**
+     * Cuenta corriente del cliente: ventas a crédito + abonos. El listado la pide por fetch y muestra
+     * un resumen en la ventana flotante; abierta directo es la página donde se cobra el abono.
+     */
+    public function show(Request $request, Cliente $cliente)
     {
         $cliente->load(['ventas' => function ($q) {
             $q->where('tipo_pago', 'credito')->with('detalles.producto')->latest();
@@ -209,8 +232,17 @@ class ClienteController extends Controller
         $totalComprado = $cliente->totalComprado();
         $ultimaCompra = $cliente->ultimaCompra();
 
+        if ($request->ajax()) {
+            return view('clientes._ficha', compact('cliente', 'saldo', 'disponible', 'totalComprado', 'ultimaCompra'));
+        }
+
         // Estado de la caja de hoy: los abonos solo se reciben con la caja abierta
-        $estadoCaja = CierreCaja::estaCerrada(now()) ? 'cerrada' : (CierreCaja::estaAbierta(now()) ? 'abierta' : 'sin_abrir');
+        $estadoCaja = match (true) {
+            CierreCaja::pendienteAnterior() !== null => 'pendiente',
+            CierreCaja::estaCerrada(now()) => 'cerrada',
+            CierreCaja::estaAbierta(now()) => 'abierta',
+            default => 'sin_abrir',
+        };
 
         return view('clientes.show', compact('cliente', 'saldo', 'disponible', 'totalComprado', 'ultimaCompra', 'estadoCaja'));
     }
@@ -219,11 +251,14 @@ class ClienteController extends Controller
     public function registrarAbono(Request $request, Cliente $cliente)
     {
         $request->validate([
-            'monto' => 'required|numeric|min:0.01',
+            'monto' => 'required|numeric|min:0.01|max:9999999999',
             'moneda' => 'nullable|in:USD,VES',
             'notas' => 'nullable|string|max:500',
         ]);
 
+        if ($aviso = CierreCaja::avisoCajaPendiente()) {
+            return back()->withErrors(['error' => $aviso])->withInput();
+        }
         // Un abono es efectivo que entra a la caja del día: después del cierre ya no saldría en el cuadre
         if (CierreCaja::estaCerrada(now())) {
             return back()->withErrors(['error' => 'La caja de hoy ya fue cerrada. Para recibir el abono, un encargado puede reabrirla en "Caja" (botón "Reabrir caja").'])->withInput();

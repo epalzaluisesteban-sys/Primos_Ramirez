@@ -22,107 +22,113 @@
     $tasaVigente = \App\Support\Moneda::tasa();
 @endphp
 
-<form action="{{ $accion }}" method="POST" id="form-venta" data-tasa="{{ $tasaVigente }}">
+<form action="{{ $accion }}" method="POST" id="form-venta" data-tasa="{{ $tasaVigente }}" class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
     @csrf
     @if($esEdicion) @method('PUT') @endif
 
-    <div id="items-container" class="space-y-3 mb-6">
-        @foreach($lineas as $i => $linea)
-            @include('ventas._fila', ['i' => $i, 'linea' => $linea, 'productos' => $productos, 'stockExtra' => $stockExtra])
-        @endforeach
-    </div>
+    {{-- Columna 1: lo que se lleva el cliente. "Agregar otro producto" va justo debajo de la última línea. --}}
+    <section class="tarjeta lg:col-span-2" aria-labelledby="titulo-productos">
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <h2 id="titulo-productos" class="titulo-tarjeta">Productos</h2>
+            <span id="cuenta-productos" class="insignia-gris"></span>
+        </div>
+
+        <div id="items-container">
+            @foreach($lineas as $i => $linea)
+                @include('ventas._fila', ['i' => $i, 'linea' => $linea, 'productos' => $productos, 'stockExtra' => $stockExtra])
+            @endforeach
+        </div>
+
+        <button type="button" id="btn-agregar-fila" class="btn-secundario w-full mt-4 border-dashed">
+            <x-icon name="plus" class="w-4 h-4" /> Agregar otro producto
+        </button>
+    </section>
 
     <template id="plantilla-fila">
         @include('ventas._fila', ['i' => '__I__', 'linea' => null, 'productos' => $productos, 'stockExtra' => $stockExtra])
     </template>
 
-    <div class="mb-6 pb-6 border-b border-stone-200 dark:border-stone-700">
-        <label class="block text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase mb-2">Forma de pago</label>
-        <div class="flex gap-3">
-            <label class="flex-1 flex items-center justify-center gap-2 border-2 border-emerald-200 dark:border-emerald-800 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50 dark:has-[:checked]:bg-emerald-900/20 rounded-md py-3 cursor-pointer transition">
-                <input type="radio" name="tipo_pago" value="contado" @checked(!$esCredito) class="accent-emerald-600">
-                <span class="text-sm font-semibold text-stone-700 dark:text-stone-300">Contado</span>
-            </label>
-            <label class="flex-1 flex items-center justify-center gap-2 border-2 border-orange-200 dark:border-orange-800 has-[:checked]:border-orange-600 has-[:checked]:bg-orange-50 dark:has-[:checked]:bg-orange-900/20 rounded-md py-3 cursor-pointer transition">
-                <input type="radio" name="tipo_pago" value="credito" @checked($esCredito) class="accent-orange-600">
-                <span class="text-sm font-semibold text-stone-700 dark:text-stone-300">Fiado / crédito</span>
-            </label>
-        </div>
+    {{-- Columna 2: cómo paga, a quién y cuánto. En escritorio queda fija al bajar por la lista. --}}
+    <section class="tarjeta space-y-5 lg:sticky lg:top-20" aria-labelledby="titulo-cobro">
+        <h2 id="titulo-cobro" class="titulo-tarjeta">Cobro</h2>
 
-        <div id="moneda-wrapper" class="{{ $esCredito ? 'hidden' : '' }} mt-4">
-            <label class="block text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase mb-2">El cliente paga en</label>
-            <div class="flex gap-3">
-                <label class="flex-1 flex items-center justify-center gap-2 border-2 border-stone-200 dark:border-stone-700 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50 dark:has-[:checked]:bg-emerald-900/20 rounded-md py-2.5 cursor-pointer transition">
-                    <input type="radio" name="moneda_pago" value="USD" @checked($monedaPago !== 'VES') class="accent-emerald-600">
-                    <span class="text-sm font-semibold text-stone-700 dark:text-stone-300">Dólares ($)</span>
+        <fieldset>
+            <legend class="etiqueta">Forma de pago</legend>
+            <div class="grid grid-cols-2 gap-2">
+                <label class="flex items-center justify-center gap-2 border-2 border-stone-200 dark:border-stone-700 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50 dark:has-[:checked]:bg-emerald-900/20 rounded-md min-h-[2.625rem] px-2 cursor-pointer transition">
+                    <input type="radio" name="tipo_pago" value="contado" @checked(!$esCredito) class="casilla">
+                    <span class="text-sm font-semibold text-stone-700 dark:text-stone-300">Contado</span>
                 </label>
-                <label class="flex-1 flex items-center justify-center gap-2 border-2 border-stone-200 dark:border-stone-700 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50 dark:has-[:checked]:bg-emerald-900/20 rounded-md py-2.5 cursor-pointer transition @if($tasaVigente <= 0) opacity-50 @endif">
-                    <input type="radio" name="moneda_pago" value="VES" @checked($monedaPago === 'VES') @disabled($tasaVigente <= 0) class="accent-emerald-600">
-                    <span class="text-sm font-semibold text-stone-700 dark:text-stone-300">Bolívares (Bs.)</span>
+                <label class="flex items-center justify-center gap-2 border-2 border-stone-200 dark:border-stone-700 has-[:checked]:border-orange-600 has-[:checked]:bg-orange-50 dark:has-[:checked]:bg-orange-900/20 rounded-md min-h-[2.625rem] px-2 cursor-pointer transition">
+                    <input type="radio" name="tipo_pago" value="credito" @checked($esCredito) class="casilla accent-orange-600">
+                    <span class="text-sm font-semibold text-stone-700 dark:text-stone-300">Fiado</span>
                 </label>
             </div>
-            <p class="text-[11px] text-stone-400 dark:text-stone-500 mt-1.5">
+        </fieldset>
+
+        <fieldset id="moneda-wrapper" class="{{ $esCredito ? 'hidden' : '' }}">
+            <legend class="etiqueta">El cliente paga en</legend>
+            <div class="grid grid-cols-2 gap-2">
+                <label class="flex items-center justify-center gap-2 border-2 border-stone-200 dark:border-stone-700 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50 dark:has-[:checked]:bg-emerald-900/20 rounded-md min-h-[2.625rem] px-2 cursor-pointer transition">
+                    <input type="radio" name="moneda_pago" value="USD" @checked($monedaPago !== 'VES') class="casilla">
+                    <span class="text-sm font-semibold text-stone-700 dark:text-stone-300">Dólares</span>
+                </label>
+                <label class="flex items-center justify-center gap-2 border-2 border-stone-200 dark:border-stone-700 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50 dark:has-[:checked]:bg-emerald-900/20 rounded-md min-h-[2.625rem] px-2 cursor-pointer transition @if($tasaVigente <= 0) opacity-50 @endif">
+                    <input type="radio" name="moneda_pago" value="VES" @checked($monedaPago === 'VES') @disabled($tasaVigente <= 0) class="casilla">
+                    <span class="text-sm font-semibold text-stone-700 dark:text-stone-300">Bolívares</span>
+                </label>
+            </div>
+            <p class="ayuda-campo">
                 @if($tasaVigente > 0) Tasa BCV: Bs. {{ number_format($tasaVigente, 4, ',', '.') }} por $1. @else No hay tasa BCV cargada: solo se puede cobrar en dólares. @endif
             </p>
-        </div>
+        </fieldset>
 
-        <div id="cliente-wrapper" class="mt-4">
-            <label for="cliente_id" class="block text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase mb-1.5">
+        <div id="cliente-wrapper">
+            <label for="cliente_id" class="etiqueta">
                 Cliente <span id="cliente-opcional" class="normal-case font-normal">(Opcional)</span>
             </label>
-            <div class="flex gap-2">
-                <select name="cliente_id" id="cliente_id" class="campo min-w-0 flex-1">
-                    <option value="">Sin cliente (mostrador)</option>
-                    @foreach($clientes as $cli)
-                        @php
-                            $deuda = $cli->saldoPendiente();
-                            // Al editar una venta a crédito de este cliente, su monto actual se libera (igual que en verificarLimiteCredito)
-                            $liberado = ($esEdicion && $venta->tipo_pago === 'credito' && (int) $venta->cliente_id === $cli->id) ? (float) $venta->total : 0;
-                            $disponible = $cli->creditoDisponible($deuda - $liberado);
-                        @endphp
-                        <option value="{{ $cli->id }}" @selected((int) $clienteActual === $cli->id)
-                                data-deuda="{{ $deuda }}" data-disponible="{{ $disponible ?? '' }}">
-                            {{ $cli->nombre }}@if($deuda > 0) (Debe: ${{ number_format($deuda, 2) }})@endif
-                            @if($disponible !== null) — Disponible: ${{ number_format($disponible, 2) }}@endif
-                        </option>
-                    @endforeach
-                </select>
-                <button type="button" id="btn-cliente-nuevo" class="btn-secundario shrink-0 whitespace-nowrap">
-                    <x-icon name="plus" class="w-4 h-4" /> <span class="hidden sm:inline">Cliente nuevo</span><span class="sm:hidden">Nuevo</span>
-                </button>
-            </div>
+            <select name="cliente_id" id="cliente_id" class="campo">
+                <option value="">Sin cliente (mostrador)</option>
+                @foreach($clientes as $cli)
+                    @php
+                        $deuda = $cli->saldoPendiente();
+                        // Al editar una venta a crédito de este cliente, su monto actual se libera (igual que en verificarLimiteCredito)
+                        $liberado = ($esEdicion && $venta->tipo_pago === 'credito' && (int) $venta->cliente_id === $cli->id) ? (float) $venta->total : 0;
+                        $disponible = $cli->creditoDisponible($deuda - $liberado);
+                    @endphp
+                    <option value="{{ $cli->id }}" @selected((int) $clienteActual === $cli->id)
+                            data-deuda="{{ $deuda }}" data-disponible="{{ $disponible ?? '' }}">
+                        {{ $cli->nombre }}@if($deuda > 0) (Debe: ${{ number_format($deuda, 2) }})@endif
+                        @if($disponible !== null) — Disponible: ${{ number_format($disponible, 2) }}@endif
+                    </option>
+                @endforeach
+            </select>
             <p id="cliente-ayuda" class="ayuda-campo"></p>
+            <button type="button" id="btn-cliente-nuevo" class="btn-secundario btn-sm mt-2">
+                <x-icon name="plus" class="w-4 h-4" /> Registrar cliente nuevo
+            </button>
 
             {{-- Crédito del cliente elegido; se actualiza con el total de la venta --}}
-            <div id="credito-info" class="hidden mt-2 caja-suave px-3 py-2.5 text-sm">
-                <div class="flex flex-wrap justify-between gap-x-4 gap-y-1">
-                    <span class="text-stone-600 dark:text-stone-300">Debe: <strong id="credito-deuda">$0.00</strong></span>
-                    <span class="text-stone-600 dark:text-stone-300">Crédito disponible: <strong id="credito-disponible" class="text-emerald-700 dark:text-emerald-400">$0.00</strong></span>
-                </div>
-                <div id="credito-aviso" class="hidden mt-2">
-                    <p class="flex items-start gap-1.5 text-xs font-semibold text-rose-700 dark:text-rose-400">
-                        <x-icon name="alert-triangle" class="w-4 h-4 shrink-0" />
-                        <span>Esta venta supera el crédito disponible. Quita productos, cobra de contado o pide un abono primero.</span>
-                    </p>
-                </div>
+            <div id="credito-info" class="hidden mt-3 caja-suave px-3 py-2.5 text-sm space-y-1">
+                <p class="flex justify-between gap-3 text-stone-600 dark:text-stone-300">Debe <strong id="credito-deuda">$0.00</strong></p>
+                <p class="flex justify-between gap-3 text-stone-600 dark:text-stone-300">Crédito disponible <strong id="credito-disponible" class="text-emerald-700 dark:text-emerald-400">$0.00</strong></p>
+                <p id="credito-aviso" class="hidden pt-1 items-start gap-1.5 text-xs font-semibold text-rose-700 dark:text-rose-400">
+                    <x-icon name="alert-triangle" class="w-4 h-4 shrink-0" />
+                    <span>Esta venta supera el crédito disponible. Quita productos, cobra de contado o pide un abono primero.</span>
+                </p>
             </div>
         </div>
-    </div>
 
-    <div class="flex justify-between items-center mb-6 pt-4 border-t border-stone-200 dark:border-stone-700">
-        <button type="button" id="btn-agregar-fila" class="flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:text-stone-200 dark:hover:bg-stone-600 text-stone-600 font-semibold py-2 px-4 rounded-md text-sm transition">
-            <x-icon name="plus" class="w-4 h-4" /> Agregar producto
-        </button>
-        <div class="text-right">
-            <span class="text-xs text-stone-500 dark:text-stone-400 uppercase font-semibold block">Total general</span>
-            <span class="font-display text-2xl font-extrabold text-emerald-800 dark:text-emerald-400">$<span id="total-general">{{ number_format($venta->total ?? 0, 2) }}</span></span>
-            <span class="block text-sm font-bold text-stone-600 dark:text-stone-300" id="total-ves-wrapper">Bs. <span id="total-ves">{{ number_format(\App\Support\Moneda::aVes($venta->total ?? 0), 2, ',', '.') }}</span></span>
+        <div class="border-t border-stone-200 dark:border-stone-700 pt-4">
+            <p class="cifra-etiqueta">Total a cobrar</p>
+            <p class="font-display text-3xl font-extrabold text-emerald-800 dark:text-emerald-400">$<span id="total-general">{{ number_format($venta->total ?? 0, 2) }}</span></p>
+            <p class="text-sm font-bold text-stone-600 dark:text-stone-300" id="total-ves-wrapper">Bs. <span id="total-ves">{{ number_format(\App\Support\Moneda::aVes($venta->total ?? 0), 2, ',', '.') }}</span></p>
         </div>
-    </div>
 
-    <button type="submit" class="btn-primario w-full py-3.5 text-base">
-        <x-icon name="check" class="w-5 h-5" /> {{ $textoBoton }}
-    </button>
+        <button type="submit" class="btn-primario w-full">
+            <x-icon name="check" class="w-5 h-5" /> {{ $textoBoton }}
+        </button>
+    </section>
 </form>
 
 {{-- Ventana para registrar un cliente sin salir de la venta. Va fuera del formulario de la venta
@@ -186,7 +192,9 @@
 
             function calcularTotales() {
                 let total = 0;
-                contenedor.querySelectorAll('.item-row').forEach(function (fila) {
+                const filas = contenedor.querySelectorAll('.item-row');
+                document.getElementById('cuenta-productos').textContent = filas.length + (filas.length === 1 ? ' línea' : ' líneas');
+                filas.forEach(function (fila) {
                     const select = fila.querySelector('.producto-select');
                     const precio = parseFloat(select.options[select.selectedIndex].dataset.precio) || 0;
                     const cantidad = parseFloat(fila.querySelector('.cantidad-input').value) || 0;
@@ -223,7 +231,9 @@
                 campo.classList.toggle('dark:text-emerald-400', !supera);
                 campo.classList.toggle('text-rose-700', supera);
                 campo.classList.toggle('dark:text-rose-400', supera);
-                document.getElementById('credito-aviso').classList.toggle('hidden', !supera);
+                const aviso = document.getElementById('credito-aviso');
+                aviso.classList.toggle('hidden', !supera);
+                aviso.classList.toggle('flex', supera);
             }
 
             function esCredito() {
@@ -314,6 +324,7 @@
             document.getElementById('btn-agregar-fila').addEventListener('click', function () {
                 contenedor.insertAdjacentHTML('beforeend', plantilla.replaceAll('__I__', indiceFila++));
                 calcularTotales();
+                contenedor.lastElementChild.querySelector('.producto-select').focus();
             });
 
             contenedor.addEventListener('click', function (e) {

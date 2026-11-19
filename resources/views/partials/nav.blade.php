@@ -5,10 +5,11 @@
     $usuarioNav = auth()->user();
     $menu = [
         ['label' => 'Inicio', 'icon' => 'leaf', 'route' => 'dashboard', 'match' => ['dashboard']],
-        ['label' => 'Ventas', 'icon' => 'cart', 'match' => ['ventas.*', 'caja.*'], 'items' => [
+        ['label' => 'Ventas', 'icon' => 'cart', 'match' => ['ventas.*', 'caja.*', 'gastos.*'], 'items' => [
             ['label' => 'Nueva venta', 'icon' => 'plus', 'route' => 'ventas.create', 'match' => ['ventas.create'], 'ayuda' => 'Registrar lo que se le vende a un cliente'],
             ['label' => 'Ventas registradas', 'icon' => 'cart', 'route' => 'ventas.index', 'match' => ['ventas.index', 'ventas.edit', 'ventas.show', 'ventas.papelera'], 'ayuda' => 'Ver, imprimir, editar o eliminar ventas'],
             ['label' => 'Caja del día', 'icon' => 'banknote', 'route' => 'caja.index', 'match' => ['caja.*'], 'ayuda' => 'Abrir la caja en la mañana y cerrarla al final'],
+            ['label' => 'Gastos', 'icon' => 'trending-down', 'route' => 'gastos.index', 'match' => ['gastos.*'], 'ayuda' => 'Lo que se paga con el efectivo de la caja, con su reporte'],
         ]],
         // Todos los roles: el obrero entra para cobrar los abonos de los fiados
         ['label' => 'Clientes', 'icon' => 'users', 'route' => 'clientes.index', 'match' => ['clientes.*']],
@@ -18,7 +19,8 @@
         $menu[] = ['label' => 'Inventario', 'icon' => 'box', 'match' => ['productos.*', 'categorias.*', 'mermas.*', 'compras.*', 'proveedores.*'], 'items' => [
             ['label' => 'Productos', 'icon' => 'box', 'route' => 'productos.index', 'match' => ['productos.*'], 'ayuda' => 'Precios, existencias y alertas de stock (filtros)'],
             ['label' => 'Recibir mercancía', 'icon' => 'inbox-down', 'route' => 'compras.index', 'match' => ['compras.*'], 'ayuda' => 'Anotar lo que llega del proveedor (suma al stock)'],
-            ['label' => 'Proveedores', 'icon' => 'truck', 'route' => 'proveedores.index', 'match' => ['proveedores.*'], 'ayuda' => 'Datos de contacto y compras a cada proveedor'],
+            ['label' => 'Proveedores', 'icon' => 'truck', 'route' => 'proveedores.index', 'match' => ['proveedores.index', 'proveedores.create', 'proveedores.edit', 'proveedores.show'], 'ayuda' => 'Qué surte cada uno, contacto y compras'],
+            ['label' => 'Lo que debemos', 'icon' => 'banknote', 'route' => 'proveedores.deudas', 'match' => ['proveedores.deudas*'], 'ayuda' => 'Compras a crédito por pagar a cada proveedor'],
             ['label' => 'Registrar pérdida', 'icon' => 'package-x', 'route' => 'mermas.index', 'match' => ['mermas.*'], 'ayuda' => 'Producto dañado, vencido o extraviado (resta del stock)'],
             ['label' => 'Categorías', 'icon' => 'tag', 'route' => 'categorias.index', 'match' => ['categorias.*'], 'ayuda' => 'Grupos de productos (frutas, verduras…)'],
         ]];

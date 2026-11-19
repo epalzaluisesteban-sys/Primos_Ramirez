@@ -83,6 +83,11 @@
         </div>
     </div>
 
+    {{-- Ficha de detalle que se abre al tocar una fila con data-ficha (ventas, productos, clientes, proveedores, caja) --}}
+    @auth
+        <x-ventana id="ventana-ficha" ancho="sm:max-w-2xl" />
+    @endauth
+
     <!-- Barra de carga -->
     <div id="loader-bar" class="fixed top-0 left-0 h-1 bg-emerald-600 dark:bg-emerald-500 z-[300] w-0 opacity-0 transition-all duration-300 pointer-events-none"></div>
 
@@ -274,6 +279,91 @@
                 iniciarBarra();
             });
         })();
+
+        // ==========================================
+        // Ventanas flotantes (componente ventana): formularios de "Nuevo…" y fichas al tocar una fila
+        //   <button data-abrir-ventana="id">       abre la ventana con ese id
+        //   <tr data-ficha="url" data-titulo="…">  pide la ficha por fetch y la muestra en #ventana-ficha
+        //   [data-acciones] dentro de la fila       sus botones hacen lo suyo y no abren la ficha
+        // ==========================================
+        (function () {
+            let origen = null;
+            const esEscritorio = window.matchMedia('(min-width: 640px)');
+
+            function abrir(ventana, desde) {
+                if (!ventana) return;
+                ventana.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+                origen = desde || null;
+                // En el celular no se enfoca un campo: abriría el teclado y taparía la ventana
+                const campo = ventana.querySelector('[data-ventana-contenido] :is(input:not([type=hidden]), select, textarea)');
+                (campo && esEscritorio.matches ? campo : ventana.querySelector('[data-cerrar-ventana].btn-icono-gris')).focus();
+            }
+
+            function cerrar(ventana) {
+                ventana.classList.add('hidden');
+                if (!document.querySelector('[data-ventana]:not(.hidden)')) document.body.classList.remove('overflow-hidden');
+                if (ventana.id === 'ventana-ficha') ventana.querySelector('[data-ventana-contenido]').innerHTML = '';
+                if (origen) origen.focus();
+                origen = null;
+            }
+
+            async function abrirFicha(fila) {
+                const ventana = document.getElementById('ventana-ficha');
+                const contenido = ventana.querySelector('[data-ventana-contenido]');
+                ventana.querySelector('[data-ventana-titulo]').textContent = fila.dataset.titulo || '';
+                contenido.innerHTML = '<p class="text-sm text-stone-500 dark:text-stone-400">Cargando…</p>';
+                abrir(ventana, fila.querySelector('a') || null);
+                try {
+                    const respuesta = await fetch(fila.dataset.ficha, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (!respuesta.ok) throw new Error();
+                    contenido.innerHTML = await respuesta.text();
+                } catch (error) {
+                    // Si falla la carga, se abre la ficha como página
+                    window.location.href = fila.dataset.ficha;
+                }
+            }
+
+            window.abrirVentana = function (id) { abrir(document.getElementById(id)); };
+
+            // Fase de captura: corre antes que la barra de carga y que los enlaces de la fila
+            document.addEventListener('click', function (e) {
+                const boton = e.target.closest('[data-abrir-ventana]');
+                if (boton) {
+                    e.preventDefault();
+                    abrir(document.getElementById(boton.dataset.abrirVentana), boton);
+                    return;
+                }
+                const cerrarBoton = e.target.closest('[data-cerrar-ventana]');
+                if (cerrarBoton) {
+                    cerrar(cerrarBoton.closest('[data-ventana]'));
+                    return;
+                }
+                const fila = e.target.closest('tr[data-ficha]');
+                // Ctrl/Cmd + clic en el enlace de la fila lo abre en otra pestaña
+                if (!fila || e.target.closest('[data-acciones]') || e.metaKey || e.ctrlKey || e.shiftKey) return;
+                e.preventDefault();
+                abrirFicha(fila);
+            }, true);
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key !== 'Escape' || !document.getElementById('modal-confirmacion').classList.contains('hidden')) return;
+                const abiertas = document.querySelectorAll('[data-ventana]:not(.hidden)');
+                if (abiertas.length) cerrar(abiertas[abiertas.length - 1]);
+            });
+
+            document.addEventListener('DOMContentLoaded', function () {
+                abrir(document.querySelector('[data-ventana][data-abrir-al-cargar]'));
+            });
+        })();
+
+        // Filtros plegables en el celular (componente filtros): un botón muestra u oculta el formulario
+        function alternarFiltros(boton) {
+            const panel = document.getElementById(boton.getAttribute('aria-controls'));
+            const abrir = panel.classList.contains('hidden');
+            panel.classList.toggle('hidden', !abrir);
+            boton.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+        }
 
         @if(session('success'))
             document.addEventListener('DOMContentLoaded', function () { mostrarToast(@json(session('success')), 'success'); });

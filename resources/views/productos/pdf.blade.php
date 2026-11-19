@@ -1,7 +1,10 @@
 @extends('pdf.layout')
 
-@section('titulo', 'Inventario de Productos')
-@section('subtitulo', 'Inventario General de Productos')
+@php
+    $titulo = 'Inventario' . ($categoria ? ' de ' . $categoria->nombre : ' general de productos') . ($nombreFiltro ? ' — ' . $nombreFiltro : '');
+@endphp
+@section('titulo', $titulo)
+@section('subtitulo', $titulo)
 @section('resumen')
     <strong>Total de productos:</strong> {{ $productos->count() }}
 @endsection

@@ -37,9 +37,12 @@
                     <p class="text-xs text-stone-500 dark:text-stone-400 mb-4">Úsala si no hay internet. Reemplaza la tasa de hoy.</p>
                     <form action="{{ route('tasa.store') }}" method="POST" class="space-y-3">
                         @csrf
-                        <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase">Bs. por $1</label>
-                        <input type="number" name="tasa" step="0.0001" min="0.0001" required placeholder="Ej. 889,2553"
-                               class="campo font-bold">
+                        <div>
+                            <label class="etiqueta" for="tasa-manual">Bs. por $1</label>
+                            <input type="number" id="tasa-manual" name="tasa" step="0.0001" min="0.0001" max="100000000" inputmode="decimal" required placeholder="Ej. 889.2553"
+                                   value="{{ old('tasa') }}" class="campo font-bold @error('tasa') border-rose-500 @enderror">
+                            @error('tasa') <p class="error-campo">{{ $message }}</p> @enderror
+                        </div>
                         <button type="submit" class="btn-oscuro w-full">
                             <x-icon name="check" class="w-4 h-4" /> Guardar tasa
                         </button>
