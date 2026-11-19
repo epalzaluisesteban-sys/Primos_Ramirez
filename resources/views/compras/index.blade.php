@@ -5,7 +5,7 @@
 @section('content')
     <div class="pagina">
 
-        <x-encabezado titulo="Recibir mercancía" subtitulo="Anota lo que llega del proveedor. Suma al stock y actualiza el costo de cada producto.">
+        <x-encabezado titulo="Recibir mercancía" subtitulo="Anota lo que llega del proveedor. Suma al stock y actualiza el costo de cada producto. Toca una entrada para ver su detalle.">
             <x-acciones-exportar :excel="route('compras.excel')" :pdf="route('compras.pdf')" />
             <button type="button" data-abrir-ventana="ventana-compra" class="btn-primario"><x-icon name="plus" class="w-4 h-4" /> Registrar entrada</button>
         </x-encabezado>
@@ -32,10 +32,10 @@
                         </thead>
                         <tbody>
                             @forelse($compras as $compra)
-                                <tr>
+                                <tr data-ficha="{{ route('compras.show', $compra) }}" data-titulo="Entrada de mercancía" class="cursor-pointer">
                                     <td class="text-xs whitespace-nowrap">{{ \Illuminate\Support\Carbon::parse($compra->fecha)->format('d/m/Y') }}</td>
                                     <td>
-                                        <p class="font-bold text-stone-900 dark:text-stone-100">{{ $compra->producto->nombre ?? 'Producto eliminado' }}</p>
+                                        <a href="{{ route('compras.show', $compra) }}" class="font-bold text-stone-900 dark:text-stone-100 hover:underline" aria-label="Ver detalle de la compra de {{ $compra->producto->nombre ?? 'producto eliminado' }}">{{ $compra->producto->nombre ?? 'Producto eliminado' }}</a>
                                         <p class="lg:hidden text-[11px] text-stone-500 dark:text-stone-400">{{ $compra->nombreProveedor() }}{{ $compra->tipo_pago === 'credito' ? ' · a crédito' : '' }}</p>
                                     </td>
                                     <td class="text-right font-bold whitespace-nowrap text-emerald-800 dark:text-emerald-400">+@cantidad($compra->cantidad)</td>

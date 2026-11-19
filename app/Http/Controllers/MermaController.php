@@ -59,6 +59,13 @@ class MermaController extends Controller
         return $this->entregarPdf($pdf, 'Perdidas_' . now()->format('Y-m-d') . '.pdf');
     }
 
+    public function show(Request $request, Merma $merma)
+    {
+        $merma->load(['producto', 'usuario']);
+
+        return view($request->ajax() ? 'mermas._ficha' : 'mermas.show', compact('merma'));
+    }
+
     public function store(Request $request)
     {
         $request->validate([

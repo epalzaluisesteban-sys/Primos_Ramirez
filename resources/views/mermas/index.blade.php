@@ -5,7 +5,7 @@
 @section('content')
     <div class="pagina">
 
-        <x-encabezado titulo="Pérdidas de mercancía" subtitulo="Producto dañado, vencido o extraviado. Lo que registres aquí se resta del stock.">
+        <x-encabezado titulo="Pérdidas de mercancía" subtitulo="Producto dañado, vencido o extraviado. Lo que registres aquí se resta del stock. Toca una para ver su detalle.">
             <x-acciones-exportar :excel="route('mermas.excel')" :pdf="route('mermas.pdf')" />
             <button type="button" data-abrir-ventana="ventana-merma" class="btn-peligro"><x-icon name="plus" class="w-4 h-4" /> Registrar pérdida</button>
         </x-encabezado>
@@ -41,10 +41,10 @@
                     </thead>
                     <tbody>
                         @forelse($mermas as $merma)
-                            <tr>
+                            <tr data-ficha="{{ route('mermas.show', $merma) }}" data-titulo="Pérdida registrada" class="cursor-pointer">
                                 <td class="text-xs whitespace-nowrap">{{ $merma->fecha->format('d/m/Y') }}<span class="block text-stone-500 dark:text-stone-400">{{ $merma->fecha->format('h:i A') }}</span></td>
                                 <td>
-                                    <p class="font-bold text-stone-900 dark:text-stone-100">{{ $merma->producto->nombre ?? 'Producto eliminado' }}</p>
+                                    <a href="{{ route('mermas.show', $merma) }}" class="font-bold text-stone-900 dark:text-stone-100 hover:underline" aria-label="Ver detalle de la pérdida de {{ $merma->producto->nombre ?? 'producto eliminado' }}">{{ $merma->producto->nombre ?? 'Producto eliminado' }}</a>
                                     <p class="sm:hidden text-[11px] text-stone-500 dark:text-stone-400">{{ $merma->motivoLabel() }}</p>
                                     @if($merma->observacion)
                                         <p class="text-[11px] text-stone-500 dark:text-stone-400">{{ $merma->observacion }}</p>

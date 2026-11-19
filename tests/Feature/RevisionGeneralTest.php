@@ -40,7 +40,7 @@ class RevisionGeneralTest extends TestCase
         foreach ($this->vistas() as $ruta => $html) {
             preg_match_all('/<(?:input|select|textarea)\b[^>]*\bname="([a-z_]+)/', $html, $campos);
             foreach (array_unique($campos[1]) as $campo) {
-                if (!in_array($campo, ['_token', '_method', '_ventana'], true) && !isset($atributos[$campo])) {
+                if (!in_array($campo, ['_token', '_method', '_ventana', '_editar_en'], true) && !isset($atributos[$campo])) {
                     $sinNombre[] = "{$campo} ({$ruta})";
                 }
             }

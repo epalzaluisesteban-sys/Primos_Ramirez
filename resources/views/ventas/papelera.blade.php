@@ -5,7 +5,7 @@
 @section('content')
     <div class="pagina">
 
-        <x-encabezado titulo="Papelera de ventas" subtitulo="Ventas eliminadas. No cuentan en la caja, los reportes, el kardex ni el saldo de los clientes." :volver="route('ventas.index')" />
+        <x-encabezado titulo="Papelera de ventas" subtitulo="Ventas eliminadas. No cuentan en la caja, los reportes, el kardex ni el saldo de los clientes. Toca una para ver su detalle." :volver="route('ventas.index')" />
 
         <div class="aviso-azul mb-6">
             <x-icon name="alert-triangle" class="w-4 h-4 mt-0.5 shrink-0" />
@@ -32,8 +32,8 @@
                     </thead>
                     <tbody class="divide-y divide-stone-100 dark:divide-stone-700">
                         @forelse($ventas as $v)
-                            <tr class="hover:bg-stone-50 dark:hover:bg-stone-700/40">
-                                <td class="py-3 px-4 font-bold text-stone-900 dark:text-stone-100">#{{ $v->id }}</td>
+                            <tr data-ficha="{{ route('ventas.show', $v) }}" data-titulo="Venta #{{ $v->id }} (eliminada)" class="cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-700/40">
+                                <td class="py-3 px-4"><a href="{{ route('ventas.show', $v) }}" class="font-bold text-stone-900 dark:text-stone-100 hover:underline" aria-label="Ver detalle de la venta #{{ $v->id }}">#{{ $v->id }}</a></td>
                                 <td class="py-3 px-4 text-xs whitespace-nowrap">
                                     {{ $v->fecha->format('d/m/Y h:i A') }}
                                     <span class="block text-stone-500 dark:text-stone-400">Atendió {{ $v->usuario->name ?? 'Sistema' }}</span>
@@ -48,11 +48,8 @@
                                     <span class="block text-stone-500 dark:text-stone-400">{{ $v->eliminadaPor->name ?? '' }}</span>
                                 </td>
                                 <td class="py-3 px-4 text-xs">{{ $v->motivo_anulacion ?: '—' }}</td>
-                                <td class="py-3 px-4">
+                                <td class="py-3 px-4 cursor-default" data-acciones>
                                     <div class="flex justify-end items-center gap-2">
-                                        <a href="{{ route('ventas.show', $v) }}" class="btn-icono-gris" title="Ver detalle" aria-label="Ver detalle de la venta #{{ $v->id }}">
-                                            <x-icon name="eye" class="w-4 h-4" />
-                                        </a>
                                         @if($v->puedeRestaurarse())
                                             <form action="{{ route('ventas.restaurar', $v) }}" method="POST"
                                                   data-confirm="¿Restaurar la venta #{{ $v->id }}? Se vuelve a descontar la mercancía del inventario y cuenta otra vez en la caja de hoy.">

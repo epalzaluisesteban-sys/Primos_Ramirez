@@ -98,10 +98,10 @@ class ProveedorController extends Controller
         return redirect()->route('proveedores.index')->with('success', 'Proveedor registrado exitosamente.');
     }
 
-    public function edit(Proveedor $proveedor)
+    public function edit(Request $request, Proveedor $proveedor)
     {
         $categorias = Categoria::orderBy('nombre')->get();
-        return view('proveedores.edit', compact('proveedor', 'categorias'));
+        return view($request->ajax() ? 'proveedores._editar' : 'proveedores.edit', compact('proveedor', 'categorias'));
     }
 
     public function update(Request $request, Proveedor $proveedor)

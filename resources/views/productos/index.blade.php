@@ -137,7 +137,7 @@
                                                 <x-icon name="package-x" class="w-4 h-4" />
                                             </a>
                                         @endif
-                                        <a href="{{ route('productos.edit', $prod->id) }}" class="hidden sm:inline-flex btn-icono-ambar" title="Editar" aria-label="Editar {{ $prod->nombre }}">
+                                        <a href="{{ route('productos.edit', $prod->id) }}" data-editar class="hidden sm:inline-flex btn-icono-ambar" title="Editar" aria-label="Editar {{ $prod->nombre }}">
                                             <x-icon name="edit" class="w-4 h-4" />
                                         </a>
                                         @if(auth()->user()->esDueno())

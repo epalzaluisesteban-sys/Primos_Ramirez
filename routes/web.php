@@ -58,6 +58,7 @@ Route::middleware(['auth'])->group(function () {
     // Gastos pagados con el efectivo de la caja: todos los anotan y ven su registro
     Route::get('/gastos', [GastoController::class, 'index'])->name('gastos.index');
     Route::post('/gastos', [GastoController::class, 'store'])->name('gastos.store');
+    Route::get('/gastos/{gasto}', [GastoController::class, 'show'])->whereNumber('gasto')->name('gastos.show');
 
     // Módulo de Ventas y Reportes
     Route::resource('ventas', VentaController::class)->only(['index', 'create', 'store']);
@@ -97,10 +98,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('productos/{producto}/etiqueta', [ProductoController::class, 'etiquetaPdf'])->name('productos.etiqueta');
 
         // Gestión de Categorías
-        Route::resource('categorias', CategoriaController::class)->except(['show', 'destroy']);
+        Route::resource('categorias', CategoriaController::class)->only(['index', 'store', 'show', 'edit', 'update']);
 
         // Entrada de Inventario (Compras)
-        Route::resource('compras', CompraController::class)->only(['index', 'store']);
+        Route::resource('compras', CompraController::class)->only(['index', 'store', 'show']);
         Route::get('compras-exportar-excel', [CompraController::class, 'exportarExcel'])->name('compras.excel');
         Route::get('compras-exportar-pdf', [CompraController::class, 'exportarPDF'])->name('compras.pdf');
 
@@ -136,7 +137,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('clientes-exportar-pdf', [ClienteController::class, 'exportarPDF'])->name('clientes.pdf');
 
         // Control de Mermas / Pérdidas de Inventario
-        Route::resource('mermas', MermaController::class)->only(['index', 'store']);
+        Route::resource('mermas', MermaController::class)->only(['index', 'store', 'show']);
         Route::get('mermas-exportar-excel', [MermaController::class, 'exportarExcel'])->name('mermas.excel');
         Route::get('mermas-exportar-pdf', [MermaController::class, 'exportarPDF'])->name('mermas.pdf');
 
@@ -174,7 +175,7 @@ Route::middleware(['auth'])->group(function () {
         
         // Gestión de Personal / Usuarios
         Route::patch('usuarios/{usuario}/activo', [UserController::class, 'alternarActivo'])->name('usuarios.activo');
-        Route::resource('usuarios', UserController::class)->only(['index', 'store', 'edit', 'update', 'destroy']);
+        Route::resource('usuarios', UserController::class)->only(['index', 'store', 'show', 'edit', 'update', 'destroy']);
 
         // Respaldo y restauración de toda la información
         Route::get('respaldos', [RespaldoController::class, 'index'])->name('respaldos.index');

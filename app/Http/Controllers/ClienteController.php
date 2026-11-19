@@ -168,9 +168,9 @@ class ClienteController extends Controller
         return response()->json(['id' => $cliente->id, 'nombre' => $cliente->nombre], 201);
     }
 
-    public function edit(Cliente $cliente)
+    public function edit(Request $request, Cliente $cliente)
     {
-        return view('clientes.edit', compact('cliente'));
+        return view($request->ajax() ? 'clientes._editar' : 'clientes.edit', compact('cliente'));
     }
 
     public function update(Request $request, Cliente $cliente)

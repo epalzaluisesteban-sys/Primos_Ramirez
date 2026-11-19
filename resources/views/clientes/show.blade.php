@@ -135,8 +135,8 @@
                             </thead>
                             <tbody class="divide-y divide-stone-100 dark:divide-stone-700">
                                 @forelse($cliente->ventas as $venta)
-                                    <tr>
-                                        <td class="py-2.5 px-3 text-xs">{{ $venta->fecha->format('d/m/Y H:i') }}</td>
+                                    <tr data-ficha="{{ route('ventas.show', $venta) }}" data-titulo="Venta #{{ $venta->id }}" class="cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-700/40">
+                                        <td class="py-2.5 px-3 text-xs"><a href="{{ route('ventas.show', $venta) }}" class="hover:underline" aria-label="Ver detalle de la venta #{{ $venta->id }}">{{ $venta->fecha->format('d/m/Y h:i A') }}</a></td>
                                         <td class="py-2.5 px-3 text-xs">
                                             {{ $venta->detalles->map(fn($d) => $d->producto->nombre . ' x' . \App\Support\Cantidad::formato($d->cantidad))->join(', ') }}
                                         </td>

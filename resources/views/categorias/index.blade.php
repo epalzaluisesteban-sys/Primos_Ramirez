@@ -5,7 +5,7 @@
 @section('content')
     <div class="pagina">
 
-        <x-encabezado titulo="Categorías" subtitulo="Grupos para ordenar los productos (frutas, verduras, granos…).">
+        <x-encabezado titulo="Categorías" subtitulo="Grupos para ordenar los productos (frutas, verduras, granos…). Toca una para ver sus productos.">
             <button type="button" data-abrir-ventana="ventana-categoria" class="btn-primario"><x-icon name="plus" class="w-4 h-4" /> Nueva categoría</button>
         </x-encabezado>
 
@@ -27,7 +27,7 @@
                         </thead>
                         <tbody>
                             @forelse($categorias as $cat)
-                                <tr>
+                                <tr data-ficha="{{ route('categorias.show', $cat) }}" data-titulo="{{ $cat->nombre }}" class="cursor-pointer">
                                     <td>
                                         <div class="flex items-center gap-3">
                                             @if($cat->imagenUrl())
@@ -38,7 +38,7 @@
                                                 </span>
                                             @endif
                                             <div class="min-w-0">
-                                                <p class="font-bold text-stone-900 dark:text-stone-100">{{ $cat->nombre }}</p>
+                                                <a href="{{ route('categorias.show', $cat) }}" class="font-bold text-stone-900 dark:text-stone-100 hover:underline" aria-label="Ver ficha de {{ $cat->nombre }}">{{ $cat->nombre }}</a>
                                                 <p class="text-xs text-stone-500 dark:text-stone-400 truncate max-w-xs">{{ $cat->descripcion ?: 'Sin descripción' }}</p>
                                             </div>
                                         </div>
@@ -50,9 +50,9 @@
                                             <span class="insignia-gris">Vacía</span>
                                         @endif
                                     </td>
-                                    <td>
+                                    <td class="cursor-default" data-acciones>
                                         <div class="flex justify-end items-center gap-2">
-                                            <a href="{{ route('categorias.edit', $cat->id) }}" class="btn-icono-ambar" title="Editar">
+                                            <a href="{{ route('categorias.edit', $cat->id) }}" data-editar class="btn-icono-ambar" title="Editar" aria-label="Editar {{ $cat->nombre }}">
                                                 <x-icon name="edit" class="w-4 h-4" />
                                             </a>
                                             @if(auth()->user()->esDueno())

@@ -57,7 +57,7 @@
         <a href="{{ route('proveedores.show', $proveedor) }}" class="btn-primario">
             <x-icon name="truck" class="w-4 h-4" /> {{ $deuda['saldo'] > 0 ? 'Pagar y ver todo' : 'Ver todo' }}
         </a>
-        <a href="{{ route('proveedores.edit', $proveedor) }}" class="btn-secundario">
+        <a href="{{ route('proveedores.edit', $proveedor) }}" data-editar class="btn-secundario">
             <x-icon name="edit" class="w-4 h-4" /> Editar
         </a>
         @if($proveedor->whatsappUrl())

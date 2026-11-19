@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\Almacen;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Categoria extends Model
@@ -15,6 +16,12 @@ class Categoria extends Model
     public function productos(): HasMany
     {
         return $this->hasMany(Producto::class);
+    }
+
+    // Proveedores que marcaron esta categoría como algo que distribuyen
+    public function proveedores(): BelongsToMany
+    {
+        return $this->belongsToMany(Proveedor::class, 'categoria_proveedor')->orderBy('nombre');
     }
 
     public function imagenUrl(): ?string

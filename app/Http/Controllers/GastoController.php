@@ -30,6 +30,13 @@ class GastoController extends Controller
         return view('gastos.index', $this->datosListado($request) + compact('cajaPendiente', 'cajaHoy', 'puedeAnotar', 'disponible'));
     }
 
+    public function show(Request $request, Gasto $gasto)
+    {
+        $gasto->load(['usuario', 'caja']);
+
+        return view($request->ajax() ? 'gastos._ficha' : 'gastos.show', compact('gasto'));
+    }
+
     public function exportarExcel(Request $request): StreamedResponse
     {
         $datos = $this->datosListado($request);

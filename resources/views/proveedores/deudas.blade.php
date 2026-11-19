@@ -39,7 +39,7 @@
                     </thead>
                     <tbody>
                         @forelse($deudas as $fila)
-                            <tr>
+                            <tr data-ficha="{{ route('proveedores.show', $fila['proveedor']) }}" data-titulo="{{ $fila['proveedor']->nombre }}" class="cursor-pointer">
                                 <td>
                                     <a href="{{ route('proveedores.show', $fila['proveedor']) }}" class="font-bold text-stone-900 dark:text-stone-100 hover:text-emerald-700 dark:hover:text-emerald-400">{{ $fila['proveedor']->nombre }}</a>
                                     @if($fila['proveedor']->telefono)
@@ -58,7 +58,7 @@
                                         <span class="text-xs text-stone-400 dark:text-stone-500">Sin plazo</span>
                                     @endif
                                 </td>
-                                <td class="text-right">
+                                <td class="text-right cursor-default" data-acciones>
                                     <a href="{{ route('proveedores.show', $fila['proveedor']) }}" class="btn-secundario btn-sm whitespace-nowrap">
                                         <x-icon name="banknote" class="w-4 h-4" /> Pagar
                                     </a>

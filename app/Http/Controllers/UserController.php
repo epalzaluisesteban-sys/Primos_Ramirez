@@ -58,9 +58,23 @@ class UserController extends Controller
         return redirect()->route('usuarios.index')->with('success', 'Nuevo usuario registrado con éxito.');
     }
 
-    public function edit(User $usuario)
+    public function show(Request $request, User $usuario)
     {
-        return view('usuarios.edit', compact('usuario'));
+        $ventas = Venta::where('user_id', $usuario->id)->where('anulada', false);
+        $actividad = [
+            'ventas' => (clone $ventas)->count(),
+            'ventas_mes' => (clone $ventas)->where('fecha', '>=', now()->startOfMonth())->count(),
+            'vendido_mes' => (float) (clone $ventas)->where('fecha', '>=', now()->startOfMonth())->sum('total'),
+            'compras' => Compra::where('user_id', $usuario->id)->count(),
+            'cajas' => CierreCaja::where('user_id', $usuario->id)->count(),
+        ];
+
+        return view($request->ajax() ? 'usuarios._ficha' : 'usuarios.show', compact('usuario', 'actividad'));
+    }
+
+    public function edit(Request $request, User $usuario)
+    {
+        return view($request->ajax() ? 'usuarios._editar' : 'usuarios.edit', compact('usuario'));
     }
 
     public function update(Request $request, User $usuario)

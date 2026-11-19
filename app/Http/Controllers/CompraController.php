@@ -22,6 +22,13 @@ class CompraController extends Controller
         return view('compras.index', compact('compras', 'productos', 'proveedores'));
     }
 
+    public function show(Request $request, Compra $compra)
+    {
+        $compra->load(['producto', 'usuario', 'proveedorRef']);
+
+        return view($request->ajax() ? 'compras._ficha' : 'compras.show', compact('compra'));
+    }
+
     public function store(Request $request)
     {
         $request->merge(['tipo_pago' => $request->input('tipo_pago') ?: 'contado']);

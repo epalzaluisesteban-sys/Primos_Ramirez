@@ -63,7 +63,7 @@
             <x-icon name="banknote" class="w-4 h-4" /> {{ $saldo > 0 ? 'Cobrar abono y ver cuenta' : 'Ver cuenta completa' }}
         </a>
         @if(auth()->user()->esEncargadoOSuperior())
-            <a href="{{ route('clientes.edit', $cliente) }}" class="btn-secundario">
+            <a href="{{ route('clientes.edit', $cliente) }}" data-editar class="btn-secundario">
                 <x-icon name="edit" class="w-4 h-4" /> Editar
             </a>
         @endif

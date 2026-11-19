@@ -31,7 +31,7 @@
                     <x-icon name="whatsapp" class="w-4 h-4" /> WhatsApp
                 </a>
             @endif
-            <a href="{{ route('proveedores.edit', $proveedor->id) }}" class="btn-secundario btn-sm">
+            <a href="{{ route('proveedores.edit', $proveedor->id) }}" data-editar class="btn-secundario btn-sm">
                 <x-icon name="edit" class="w-4 h-4" /> Editar
             </a>
         </x-encabezado>
@@ -172,8 +172,8 @@
                     </thead>
                     <tbody>
                         @forelse($compras as $compra)
-                            <tr>
-                                <td class="text-xs whitespace-nowrap">{{ \Carbon\Carbon::parse($compra->fecha)->format('d/m/Y h:i A') }}</td>
+                            <tr data-ficha="{{ route('compras.show', $compra) }}" data-titulo="Entrada de mercancía" class="cursor-pointer">
+                                <td class="text-xs whitespace-nowrap"><a href="{{ route('compras.show', $compra) }}" class="hover:underline">{{ \Carbon\Carbon::parse($compra->fecha)->format('d/m/Y h:i A') }}</a></td>
                                 <td class="font-semibold text-stone-800 dark:text-stone-100">{{ $compra->producto->nombre ?? 'Eliminado' }}</td>
                                 <td class="text-center">{{ \App\Support\Cantidad::formato($compra->cantidad) }}</td>
                                 <td class="text-right">@usd($compra->precio_compra)</td>

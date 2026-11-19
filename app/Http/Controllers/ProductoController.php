@@ -151,10 +151,10 @@ class ProductoController extends Controller
         return redirect()->route('productos.index')->with('success', 'Producto creado exitosamente.');
     }
 
-    public function edit(Producto $producto)
+    public function edit(Request $request, Producto $producto)
     {
         $categorias = Categoria::all();
-        return view('productos.edit', compact('producto', 'categorias'));
+        return view($request->ajax() ? 'productos._editar' : 'productos.edit', compact('producto', 'categorias'));
     }
 
     public function update(Request $request, Producto $producto)
@@ -326,6 +326,7 @@ class ProductoController extends Controller
                 'fecha' => Carbon::parse($c->fecha),
                 'es_entrada' => true,
                 'origen' => 'Compra',
+                'ficha' => route('compras.show', $c),
                 'cantidad' => (float) $c->cantidad,
                 'precio_compra' => (float) $c->precio_compra,
                 'responsable' => $c->usuario->name ?? 'Sistema',
@@ -347,6 +348,7 @@ class ProductoController extends Controller
                 'fecha' => $v->fecha ?? $d->created_at,
                 'es_entrada' => false,
                 'origen' => 'Venta #' . $d->venta_id,
+                'ficha' => route('ventas.show', $d->venta_id),
                 'cantidad' => (float) $d->cantidad,
                 'responsable' => $v->usuario->name ?? 'Sistema',
                 'observaciones' => $obs,
@@ -359,6 +361,7 @@ class ProductoController extends Controller
                 'fecha' => $m->fecha,
                 'es_entrada' => false,
                 'origen' => 'Pérdida',
+                'ficha' => route('mermas.show', $m),
                 'cantidad' => (float) $m->cantidad,
                 'responsable' => $m->usuario->name ?? 'Sistema',
                 'observaciones' => $m->motivoLabel() . ($m->observacion ? " — {$m->observacion}" : ''),
@@ -371,6 +374,7 @@ class ProductoController extends Controller
                 'fecha' => $a->fecha,
                 'es_entrada' => $a->cantidad > 0,
                 'origen' => 'Ajuste',
+                'ficha' => null,
                 'cantidad' => abs($a->cantidad),
                 'responsable' => $a->usuario->name ?? 'Sistema',
                 'observaciones' => 'Ajuste de inventario' . ($a->motivo ? " — {$a->motivo}" : ''),

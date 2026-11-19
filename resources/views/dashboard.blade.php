@@ -306,8 +306,8 @@
                         </thead>
                         <tbody class="divide-y divide-stone-100 dark:divide-stone-700">
                             @forelse($ultimasVentas as $v)
-                                <tr class="hover:bg-stone-50/50 dark:hover:bg-stone-700/30">
-                                    <td class="py-2.5 px-3 font-bold text-stone-900 dark:text-stone-100">#{{ $v->id }}</td>
+                                <tr data-ficha="{{ route('ventas.show', $v) }}" data-titulo="Venta #{{ $v->id }}" class="cursor-pointer hover:bg-stone-50/50 dark:hover:bg-stone-700/30">
+                                    <td class="py-2.5 px-3"><a href="{{ route('ventas.show', $v) }}" class="font-bold text-stone-900 dark:text-stone-100 hover:underline" aria-label="Ver detalle de la venta #{{ $v->id }}">#{{ $v->id }}</a></td>
                                     <td class="py-2.5 px-3 text-xs">{{ $v->cliente->nombre ?? 'Mostrador' }}</td>
                                     <td class="py-2.5 px-3">
                                         <span class="text-[10px] font-bold px-2 py-0.5 rounded {{ $v->tipo_pago === 'credito' ? 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700' : 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700' }}">
@@ -346,8 +346,8 @@
                             </thead>
                             <tbody class="divide-y divide-stone-100 dark:divide-stone-700">
                                 @forelse($ultimasCompras as $c)
-                                    <tr class="hover:bg-stone-50/50 dark:hover:bg-stone-700/30">
-                                        <td class="py-2.5 px-3 font-bold text-stone-900 dark:text-stone-100">{{ $c->producto->nombre ?? 'Eliminado' }}</td>
+                                    <tr data-ficha="{{ route('compras.show', $c) }}" data-titulo="Entrada de mercancía" class="cursor-pointer hover:bg-stone-50/50 dark:hover:bg-stone-700/30">
+                                        <td class="py-2.5 px-3"><a href="{{ route('compras.show', $c) }}" class="font-bold text-stone-900 dark:text-stone-100 hover:underline">{{ $c->producto->nombre ?? 'Eliminado' }}</a></td>
                                         <td class="py-2.5 px-3 text-xs">{{ $c->nombreProveedor() }}</td>
                                         <td class="py-2.5 px-3 text-center">{{ \App\Support\Cantidad::formato($c->cantidad) }}</td>
                                         <td class="py-2.5 px-3 text-right font-bold text-indigo-700 dark:text-indigo-400">${{ number_format($c->total, 2) }}</td>

@@ -83,7 +83,7 @@
         </div>
     </div>
 
-    {{-- Ficha de detalle que se abre al tocar una fila con data-ficha (ventas, productos, clientes, proveedores, caja) --}}
+    {{-- Ventana para las fichas (filas con data-ficha) y los formularios de editar (enlaces data-editar) --}}
     @auth
         <x-ventana id="ventana-ficha" ancho="sm:max-w-2xl" />
     @endauth
@@ -285,6 +285,9 @@
         //   <button data-abrir-ventana="id">       abre la ventana con ese id
         //   <tr data-ficha="url" data-titulo="…">  pide la ficha por fetch y la muestra en #ventana-ficha
         //   [data-acciones] dentro de la fila       sus botones hacen lo suyo y no abren la ficha
+        //   <a href="url de editar" data-editar>    pide el formulario de editar (parcial _editar) y lo muestra
+        //                                           en #ventana-ficha; si vuelve con errores se reabre solo
+        //                                           (middleware ReabrirEdicionEnVentana)
         // ==========================================
         (function () {
             let origen = null;
@@ -308,19 +311,50 @@
                 origen = null;
             }
 
-            async function abrirFicha(fila) {
+            // El formulario de "Nuevo…" de la misma pantalla usa los mismos id: a lo cargado se les cambia el
+            // prefijo para que cada etiqueta siga apuntando a su campo.
+            function renombrarIds(contenido) {
+                contenido.querySelectorAll('[id]').forEach(function (el) {
+                    const anterior = el.id;
+                    el.id = 'vf-' + anterior;
+                    contenido.querySelectorAll('label[for="' + anterior + '"]').forEach(function (l) { l.htmlFor = el.id; });
+                    contenido.querySelectorAll('[data-campo="' + anterior + '"]').forEach(function (b) { b.dataset.campo = el.id; });
+                });
+            }
+
+            // innerHTML no ejecuta los <script>: se reemplazan por copias para que corran (márgenes, Bs., unidades)
+            function ejecutarScripts(contenido) {
+                contenido.querySelectorAll('script').forEach(function (viejo) {
+                    const nuevo = document.createElement('script');
+                    nuevo.textContent = viejo.textContent;
+                    viejo.replaceWith(nuevo);
+                });
+            }
+
+            async function cargarEnVentana(url, titulo, desde) {
                 const ventana = document.getElementById('ventana-ficha');
+                if (!ventana || url.indexOf(window.location.origin + '/') !== 0) return;
                 const contenido = ventana.querySelector('[data-ventana-contenido]');
-                ventana.querySelector('[data-ventana-titulo]').textContent = fila.dataset.titulo || '';
+                const tituloVentana = ventana.querySelector('[data-ventana-titulo]');
+                tituloVentana.textContent = titulo || '';
                 contenido.innerHTML = '<p class="text-sm text-stone-500 dark:text-stone-400">Cargando…</p>';
-                abrir(ventana, fila.querySelector('a') || null);
+                if (ventana.classList.contains('hidden')) abrir(ventana, desde);
                 try {
-                    const respuesta = await fetch(fila.dataset.ficha, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    const respuesta = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
                     if (!respuesta.ok) throw new Error();
                     contenido.innerHTML = await respuesta.text();
                 } catch (error) {
-                    // Si falla la carga, se abre la ficha como página
-                    window.location.href = fila.dataset.ficha;
+                    // Si falla la carga, se abre como página
+                    window.location.href = url;
+                    return;
+                }
+                const raiz = contenido.querySelector('[data-titulo-ventana]');
+                if (raiz) tituloVentana.textContent = raiz.dataset.tituloVentana;
+                if (contenido.querySelector('form')) {
+                    renombrarIds(contenido);
+                    ejecutarScripts(contenido);
+                    const campo = contenido.querySelector(':is(input:not([type=hidden]), select, textarea)');
+                    if (campo && esEscritorio.matches) campo.focus();
                 }
             }
 
@@ -339,11 +373,18 @@
                     cerrar(cerrarBoton.closest('[data-ventana]'));
                     return;
                 }
+                // Ctrl/Cmd + clic en un enlace lo abre en otra pestaña como página
+                if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+                const editar = e.target.closest('a[data-editar]');
+                if (editar) {
+                    e.preventDefault();
+                    cargarEnVentana(editar.href, editar.title || 'Editar', editar);
+                    return;
+                }
                 const fila = e.target.closest('tr[data-ficha]');
-                // Ctrl/Cmd + clic en el enlace de la fila lo abre en otra pestaña
-                if (!fila || e.target.closest('[data-acciones]') || e.metaKey || e.ctrlKey || e.shiftKey) return;
+                if (!fila || e.target.closest('[data-acciones]')) return;
                 e.preventDefault();
-                abrirFicha(fila);
+                cargarEnVentana(fila.dataset.ficha, fila.dataset.titulo, fila.querySelector('a'));
             }, true);
 
             document.addEventListener('keydown', function (e) {
@@ -354,6 +395,9 @@
 
             document.addEventListener('DOMContentLoaded', function () {
                 abrir(document.querySelector('[data-ventana][data-abrir-al-cargar]'));
+                @isset($edicionPendiente)
+                    cargarEnVentana(@json($edicionPendiente['url']), 'Editar');
+                @endisset
             });
         })();
 
@@ -370,6 +414,8 @@
         @endif
         @if($errors->any())
             document.addEventListener('DOMContentLoaded', function () { mostrarToast(@json($errors->first()), 'error'); });
+        @elseif(!empty($edicionPendiente['mensaje']))
+            document.addEventListener('DOMContentLoaded', function () { mostrarToast(@json($edicionPendiente['mensaje']), 'error'); });
         @endif
     </script>
 

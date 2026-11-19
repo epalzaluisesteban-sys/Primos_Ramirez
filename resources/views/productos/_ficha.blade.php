@@ -79,7 +79,7 @@
         <a href="{{ route('productos.kardex', $producto) }}" class="btn-primario">
             <x-icon name="clock" class="w-4 h-4" /> Kardex completo
         </a>
-        <a href="{{ route('productos.edit', $producto) }}" class="btn-secundario">
+        <a href="{{ route('productos.edit', $producto) }}" data-editar class="btn-secundario">
             <x-icon name="edit" class="w-4 h-4" /> Editar
         </a>
         <a href="{{ route('productos.etiqueta', $producto) }}" target="_blank" rel="noopener" class="btn-secundario">

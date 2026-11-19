@@ -47,9 +47,17 @@ class CategoriaController extends Controller
         return redirect()->route('categorias.index')->with('success', 'Categoría creada exitosamente.');
     }
 
-    public function edit(Categoria $categoria)
+    public function show(Request $request, Categoria $categoria)
     {
-        return view('categorias.edit', compact('categoria'));
+        $productos = $categoria->productos()->orderByDesc('activo')->orderBy('nombre')->get();
+        $categoria->load('proveedores');
+
+        return view($request->ajax() ? 'categorias._ficha' : 'categorias.show', compact('categoria', 'productos'));
+    }
+
+    public function edit(Request $request, Categoria $categoria)
+    {
+        return view($request->ajax() ? 'categorias._editar' : 'categorias.edit', compact('categoria'));
     }
 
     public function update(Request $request, Categoria $categoria)

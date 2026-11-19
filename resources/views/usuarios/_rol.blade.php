@@ -37,23 +37,22 @@
     @push('scripts')
         <script>
             // Al cambiar el rol, reescribe la lista de permisos con los del rol elegido.
-            document.querySelectorAll('[data-selector-rol]').forEach(function (bloque) {
-                var select = bloque.querySelector('select');
+            // Escucha en el documento para servir también al formulario de editar cargado en la ventana flotante.
+            document.addEventListener('change', function (e) {
+                var bloque = e.target.closest('[data-selector-rol]');
+                if (!bloque || e.target.tagName !== 'SELECT') return;
                 var lista = bloque.querySelector('[data-permisos-lista]');
                 var icono = bloque.querySelector('[data-icono-permiso]').innerHTML;
-
-                select.addEventListener('change', function () {
-                    var opcion = select.selectedOptions[0];
-                    var permisos = opcion && opcion.value ? JSON.parse(opcion.dataset.permisos) : [];
-                    lista.classList.toggle('hidden', permisos.length === 0);
-                    lista.innerHTML = '';
-                    permisos.forEach(function (texto) {
-                        var li = document.createElement('li');
-                        li.className = 'flex items-start gap-1.5';
-                        li.innerHTML = icono;
-                        li.appendChild(document.createTextNode(' ' + texto));
-                        lista.appendChild(li);
-                    });
+                var opcion = e.target.selectedOptions[0];
+                var permisos = opcion && opcion.value ? JSON.parse(opcion.dataset.permisos) : [];
+                lista.classList.toggle('hidden', permisos.length === 0);
+                lista.innerHTML = '';
+                permisos.forEach(function (texto) {
+                    var li = document.createElement('li');
+                    li.className = 'flex items-start gap-1.5';
+                    li.innerHTML = icono;
+                    li.appendChild(document.createTextNode(' ' + texto));
+                    lista.appendChild(li);
                 });
             });
         </script>

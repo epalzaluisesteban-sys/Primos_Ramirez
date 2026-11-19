@@ -108,13 +108,13 @@
                         </thead>
                         <tbody>
                             @forelse($gastos as $gasto)
-                                <tr>
+                                <tr data-ficha="{{ route('gastos.show', $gasto) }}" data-titulo="Gasto" class="cursor-pointer">
                                     <td class="text-xs whitespace-nowrap">
                                         {{ $gasto->fecha->format('d/m/Y') }}
                                         <span class="block text-stone-500 dark:text-stone-400">{{ $gasto->fecha->format('h:i A') }}<span class="hidden md:inline"> · {{ $gasto->usuario->name ?? 'Sistema' }}</span></span>
                                     </td>
                                     <td class="text-stone-800 dark:text-stone-100">
-                                        {{ $gasto->concepto }}
+                                        <a href="{{ route('gastos.show', $gasto) }}" class="hover:underline" aria-label="Ver detalle del gasto {{ $gasto->concepto }}">{{ $gasto->concepto }}</a>
                                         <span class="sm:hidden block text-[11px] text-stone-500 dark:text-stone-400">{{ $gasto->nombreCategoria() }}</span>
                                     </td>
                                     <td class="hidden sm:table-cell"><span class="insignia-gris">{{ $gasto->nombreCategoria() }}</span></td>
@@ -125,7 +125,7 @@
                                         @endif
                                     </td>
                                     @if($gestiona)
-                                        <td class="text-right">
+                                        <td class="text-right cursor-default" data-acciones>
                                             @if($gasto->caja && $gasto->caja->estado === 'ABIERTA' && $gasto->caja->esDeHoy())
                                                 <form action="{{ route('gastos.destroy', $gasto) }}" method="POST" class="inline"
                                                       data-confirm="¿Quitar el gasto «{{ $gasto->concepto }}»? El monto vuelve a contarse como efectivo en caja.">

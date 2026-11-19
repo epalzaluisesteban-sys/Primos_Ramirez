@@ -5,7 +5,7 @@
 @section('content')
     <div class="pagina">
 
-        <x-encabezado titulo="Personal" subtitulo="Quién puede entrar al sistema y qué puede hacer cada uno.">
+        <x-encabezado titulo="Personal" subtitulo="Quién puede entrar al sistema y qué puede hacer cada uno. Toca a alguien para ver su ficha.">
             <span class="insignia-violeta">{{ $usuarios->count() }} {{ $usuarios->count() === 1 ? 'usuario' : 'usuarios' }}</span>
             <button type="button" data-abrir-ventana="ventana-usuario" class="btn bg-violet-800 hover:bg-violet-900 text-white"><x-icon name="plus" class="w-4 h-4" /> Registrar trabajador</button>
         </x-encabezado>
@@ -34,7 +34,7 @@
                                     $esYo = $user->id === auth()->id();
                                     $tieneHistorial = $conMovimientos->has($user->id);
                                 @endphp
-                                <tr class="{{ $user->activo ? '' : 'opacity-60' }}">
+                                <tr data-ficha="{{ route('usuarios.show', $user) }}" data-titulo="{{ $user->name }}" class="cursor-pointer {{ $user->activo ? '' : 'opacity-60' }}">
                                     <td>
                                         <div class="flex items-center gap-3">
                                             @if($user->fotoUrl())
@@ -46,7 +46,7 @@
                                             @endif
                                             <div class="min-w-0">
                                                 <p class="font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
-                                                    {{ $user->name }}
+                                                    <a href="{{ route('usuarios.show', $user) }}" class="hover:underline" aria-label="Ver ficha de {{ $user->name }}">{{ $user->name }}</a>
                                                     @if($esYo) <span class="insignia-verde py-0.5 px-2 text-[10px]">Tú</span> @endif
                                                 </p>
                                                 <p class="text-xs text-stone-500 dark:text-stone-400 truncate">{{ $user->email }}</p>
@@ -71,9 +71,9 @@
                                         @endif
                                     </td>
                                     <td class="hidden md:table-cell text-xs whitespace-nowrap">{{ $user->ultimo_acceso ? $user->ultimo_acceso->diffForHumans() : 'Nunca' }}</td>
-                                    <td>
+                                    <td class="cursor-default" data-acciones>
                                         <div class="flex justify-end items-center gap-2">
-                                            <a href="{{ route('usuarios.edit', $user->id) }}" class="btn-icono-ambar" title="Editar datos, rol o contraseña">
+                                            <a href="{{ route('usuarios.edit', $user->id) }}" data-editar class="btn-icono-ambar" title="Editar datos, rol o contraseña" aria-label="Editar a {{ $user->name }}">
                                                 <x-icon name="edit" class="w-4 h-4" />
                                             </a>
 

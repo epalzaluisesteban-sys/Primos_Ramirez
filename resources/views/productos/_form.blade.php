@@ -53,7 +53,7 @@
     </div>
     <div>
         <label class="etiqueta" for="unidad_medida">Unidad de medida</label>
-        <select name="unidad_medida" id="unidad_medida" required onchange="ajustarExistencias()" class="campo {{ $error('unidad_medida') }}">
+        <select name="unidad_medida" id="unidad_medida" required onchange="ajustarExistencias(this.form)" class="campo {{ $error('unidad_medida') }}">
             @foreach(\App\Models\Producto::UNIDADES as $key => $label)
                 <option value="{{ $key }}" data-entero="{{ \App\Models\Producto::unidadEsEntera($key) ? 1 : 0 }}" data-ayuda="{{ \App\Models\Producto::ayudaParaUnidad($key) }}" @selected(old('unidad_medida', $producto->unidad_medida ?? 'unidad') == $key)>
                     {{ $label }}
@@ -84,20 +84,20 @@
         @error('precio_compra') <p class="error-campo">{{ $message }}</p> @enderror
     </div>
     <div>
-        <label class="etiqueta" for="input-precio-venta">Precio de venta ($) <span id="hint-bs" class="normal-case font-medium text-stone-400 dark:text-stone-500" data-tasa="{{ \App\Support\Moneda::tasa() }}"></span></label>
+        <label class="etiqueta" for="input-precio-venta">Precio de venta ($) <span data-hint-bs class="normal-case font-medium text-stone-400 dark:text-stone-500" data-tasa="{{ \App\Support\Moneda::tasa() }}"></span></label>
         <input type="number" step="0.01" min="0.01" max="99999999" inputmode="decimal" id="input-precio-venta" name="precio" value="{{ old('precio', $producto->precio ?? '') }}" required placeholder="0.00" class="campo {{ $error('precio') }}">
         @error('precio') <p class="error-campo">{{ $message }}</p> @enderror
     </div>
 </div>
 <p class="text-xs font-semibold -mt-2">
-    Margen de ganancia: <span id="texto-margen" class="text-emerald-700 dark:text-emerald-400">—</span>
+    Margen de ganancia: <span data-texto-margen class="text-emerald-700 dark:text-emerald-400">—</span>
 </p>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <div>
         <label class="etiqueta" for="stock">Existencia {{ isset($producto) ? 'actual' : 'inicial' }}</label>
         <input type="number" id="stock" min="0" max="9999999" step="0.001" name="stock" data-existencia value="{{ old('stock', isset($producto) ? \App\Support\Cantidad::formato($producto->stock) : 0) }}" required class="campo {{ $error('stock') }}">
-        <p id="ayuda-existencias" class="ayuda-campo">{{ \App\Models\Producto::ayudaParaUnidad(old('unidad_medida', $producto->unidad_medida ?? 'unidad')) }} Aplica a todas las existencias y cantidades del producto.</p>
+        <p data-ayuda-existencias class="ayuda-campo">{{ \App\Models\Producto::ayudaParaUnidad(old('unidad_medida', $producto->unidad_medida ?? 'unidad')) }} Aplica a todas las existencias y cantidades del producto.</p>
         @error('stock') <p class="error-campo">{{ $message }}</p> @enderror
     </div>
     <div>
@@ -143,57 +143,43 @@
 @endif
 
 <script>
-    (function () {
-        var compra = document.getElementById('input-precio-compra');
-        var venta = document.getElementById('input-precio-venta');
-        var texto = document.getElementById('texto-margen');
-
-        function actualizarMargen() {
-            var c = parseFloat(compra.value);
-            var v = parseFloat(venta.value);
-            if (!c || c <= 0 || isNaN(v)) {
-                texto.textContent = '—';
-                return;
-            }
-            var margen = ((v - c) / c) * 100;
-            texto.textContent = margen.toFixed(1) + '%';
-            texto.className = margen >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
-        }
-
-        compra.addEventListener('input', actualizarMargen);
-        venta.addEventListener('input', actualizarMargen);
-        actualizarMargen();
-    })();
-</script>
-
-<script>
-    (function () {
-        const input = document.getElementById('input-precio-venta');
-        const hint = document.getElementById('hint-bs');
-        const tasa = parseFloat(hint.dataset.tasa) || 0;
-        function actualizar() {
-            const v = parseFloat(input.value) || 0;
-            hint.textContent = tasa > 0 && v > 0 ? '= Bs. ' + (v * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-        }
-        input.addEventListener('input', actualizar);
-        actualizar();
-    })();
-</script>
-
-<script>
-    // Existencias sin decimales cuando el producto se cuenta por unidad, caja, atado o saco
-    function ajustarExistencias() {
-        const unidad = document.getElementById('unidad_medida');
-        const entera = unidad.options[unidad.selectedIndex].dataset.entero === '1';
-        const ayuda = document.getElementById('ayuda-existencias');
-        if (ayuda) {
-            ayuda.textContent = unidad.options[unidad.selectedIndex].dataset.ayuda + ' Aplica a todas las existencias y cantidades del producto.';
-        }
-        document.querySelectorAll('[data-existencia]').forEach(function (campo) {
+    // Corre por cada formulario que incluye este parcial (el de "Nuevo producto" y el de editar en la ventana),
+    // por eso busca dentro de su propio <form> y no por id.
+    function ajustarExistencias(form) {
+        const unidad = form.querySelector('[name="unidad_medida"]');
+        const opcion = unidad.options[unidad.selectedIndex];
+        const entera = opcion.dataset.entero === '1';
+        form.querySelector('[data-ayuda-existencias]').textContent = opcion.dataset.ayuda + ' Aplica a todas las existencias y cantidades del producto.';
+        form.querySelectorAll('[data-existencia]').forEach(function (campo) {
             campo.step = entera ? '1' : '0.001';
             campo.inputMode = entera ? 'numeric' : 'decimal';
             campo.dataset.entero = entera ? '1' : '0';
         });
     }
-    ajustarExistencias();
+
+    (function (form) {
+        const compra = form.querySelector('[name="precio_compra"]');
+        const venta = form.querySelector('[name="precio"]');
+        const margen = form.querySelector('[data-texto-margen]');
+        const hint = form.querySelector('[data-hint-bs]');
+        const tasa = parseFloat(hint.dataset.tasa) || 0;
+
+        function actualizar() {
+            const c = parseFloat(compra.value);
+            const v = parseFloat(venta.value);
+            hint.textContent = tasa > 0 && v > 0 ? '= Bs. ' + (v * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+            if (!c || c <= 0 || isNaN(v)) {
+                margen.textContent = '—';
+                return;
+            }
+            const porcentaje = ((v - c) / c) * 100;
+            margen.textContent = porcentaje.toFixed(1) + '%';
+            margen.className = porcentaje >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+        }
+
+        compra.addEventListener('input', actualizar);
+        venta.addEventListener('input', actualizar);
+        actualizar();
+        ajustarExistencias(form);
+    })(document.currentScript.closest('form'));
 </script>

@@ -68,7 +68,7 @@
                                                 <x-icon name="whatsapp" class="w-4 h-4" />
                                             </a>
                                         @endif
-                                        <a href="{{ route('proveedores.edit', $prov->id) }}" class="hidden sm:inline-flex btn-icono-ambar" title="Editar" aria-label="Editar {{ $prov->nombre }}">
+                                        <a href="{{ route('proveedores.edit', $prov->id) }}" data-editar class="hidden sm:inline-flex btn-icono-ambar" title="Editar" aria-label="Editar {{ $prov->nombre }}">
                                             <x-icon name="edit" class="w-4 h-4" />
                                         </a>
 

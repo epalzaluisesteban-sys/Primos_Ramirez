@@ -105,7 +105,7 @@
                                             <x-icon name="banknote" class="w-4 h-4" />
                                         </a>
                                         @if($gestiona)
-                                            <a href="{{ route('clientes.edit', $cli->id) }}" class="hidden sm:inline-flex btn-icono-ambar" title="Editar" aria-label="Editar {{ $cli->nombre }}">
+                                            <a href="{{ route('clientes.edit', $cli->id) }}" data-editar class="hidden sm:inline-flex btn-icono-ambar" title="Editar" aria-label="Editar {{ $cli->nombre }}">
                                                 <x-icon name="edit" class="w-4 h-4" />
                                             </a>
                                         @endif

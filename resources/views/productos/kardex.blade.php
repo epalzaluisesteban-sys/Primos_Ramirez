@@ -106,7 +106,7 @@
                     </thead>
                     <tbody>
                         @forelse($movimientos as $mov)
-                            <tr>
+                            <tr @if($mov['ficha']) data-ficha="{{ $mov['ficha'] }}" data-titulo="{{ $mov['origen'] }}" class="cursor-pointer" @endif>
                                 <td class="whitespace-nowrap">
                                     <span class="block text-xs font-semibold text-stone-700 dark:text-stone-200">{{ $mov['fecha']->format('d/m/Y') }}</span>
                                     <span class="block text-[11px] text-stone-400 dark:text-stone-500">{{ $mov['fecha']->format('h:i A') }}</span>
