@@ -70,9 +70,9 @@ return [
             'path' => env('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -bs -i'),
         ],
 
-        // Envío por la API de Brevo (HTTPS): Render gratis no deja salir correo por SMTP. Se registra en AppServiceProvider.
-        'brevo' => [
-            'transport' => 'brevo',
+        // Envío desde Gmail por un Apps Script (HTTPS): Render gratis no deja salir correo por SMTP. App\Support\CorreoGmail
+        'gmail' => [
+            'transport' => 'gmail',
         ],
 
         'log' => [

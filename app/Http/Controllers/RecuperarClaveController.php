@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\CorreoGmail;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -16,13 +17,13 @@ use Symfony\Component\Mailer\Exception\ExceptionInterface as MailerException;
  */
 class RecuperarClaveController extends Controller
 {
-    /** En producción con MAIL_MAILER=log, o Brevo sin su clave, el correo no sale de verdad: no se ofrece el enlace. */
+    /** En producción con MAIL_MAILER=log, o Gmail sin su script, el correo no sale de verdad: no se ofrece el enlace. */
     public static function correoDisponible(): bool
     {
         $mailer = config('mail.default');
 
-        if ($mailer === 'brevo') {
-            return filled(config('services.brevo.key'));
+        if ($mailer === 'gmail') {
+            return CorreoGmail::configurado();
         }
 
         return !(app()->isProduction() && in_array($mailer, ['log', 'array'], true));
@@ -47,7 +48,7 @@ class RecuperarClaveController extends Controller
         try {
             $estado = Password::sendResetLink(['email' => $request->email, 'activo' => true]);
         } catch (MailerException $e) {
-            // Brevo caído, clave equivocada o remitente sin verificar: queda en el log y la persona sabe a quién acudir
+            // Script de Gmail caído, secreto equivocado o cupo diario agotado: queda en el log y la persona sabe a quién acudir
             report($e);
 
             return back()->withErrors([

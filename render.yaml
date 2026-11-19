@@ -73,13 +73,13 @@ services:
         value: respaldos
       - key: AWS_BUCKET_RESPALDOS
         value: respaldos
-      # Correo de "¿Olvidaste tu contraseña?" por la API de Brevo (Render gratis bloquea SMTP)
+      # Correo de "¿Olvidaste tu contraseña?" desde Gmail por un Apps Script (Render gratis bloquea SMTP). DESPLIEGUE.md 3.3
       - key: MAIL_MAILER
-        value: brevo
-      - key: BREVO_API_KEY
-        sync: false            # Brevo → SMTP & API → API Keys (empieza con xkeysib-)
-      - key: MAIL_FROM_ADDRESS
-        sync: false            # El remitente verificado en Brevo (Senders)
+        value: gmail
+      - key: GMAIL_SCRIPT_URL
+        sync: false            # https://script.google.com/macros/s/.../exec
+      - key: GMAIL_SCRIPT_SECRETO
+        sync: false            # El mismo valor de SECRETO en las propiedades del script
       - key: MAIL_FROM_NAME
         value: Los Primos Ramírez
       # Primer usuario Dueño (solo se usa si no existe ninguno)

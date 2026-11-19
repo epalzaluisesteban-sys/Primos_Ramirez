@@ -46,8 +46,8 @@ ADMIN_EMAIL:                     ________________
 ADMIN_PASSWORD:                  ________________
 
 --- Correo (paso 3.3) ---
-BREVO_API_KEY:                   xkeysib-________________
-MAIL_FROM_ADDRESS:               ________________
+GMAIL_SCRIPT_URL:                https://script.google.com/macros/s/________________/exec
+GMAIL_SCRIPT_SECRETO:            ________________
 ```
 
 ---
@@ -149,20 +149,68 @@ Este comando no cambia nada de tu `.env`: solo muestra una clave nueva.
 Este usuario se crea solo la primera vez, y solo si no existe ningún Dueño. El resto del personal lo creas después
 desde **Personal**.
 
-### 3.3 Correo para "¿Olvidaste tu contraseña?" (Brevo)
+### 3.3 Correo para "¿Olvidaste tu contraseña?" (Gmail)
 
 El enlace para cambiar la contraseña llega por correo. Render gratis no deja enviar correo por SMTP, así que el sistema
-lo manda por la API de **Brevo** (gratis hasta 300 correos al día). Sin estos dos valores el sistema funciona igual,
-pero la pantalla de recuperar contraseña le pide a la persona que el Dueño se la cambie desde **Personal**.
+le pasa el correo a un pequeño script de Google (Apps Script) que lo envía desde el **Gmail del negocio** (hasta
+100 correos al día, gratis, sin dominio propio). Sin estos dos valores el sistema funciona igual, pero la pantalla de
+recuperar contraseña le pide a la persona que el Dueño se la cambie desde **Personal**.
 
-1. Crea una cuenta en <https://www.brevo.com> (plan **Free**).
-2. **Senders, Domains & Dedicated IPs** → **Senders** → **Add a sender**: escribe un correo que revises (ej. el Gmail
-   del negocio) y confírmalo con el código que te llega. Ese correo es `MAIL_FROM_ADDRESS`.
-3. **SMTP & API** → pestaña **API Keys** → **Generate a new API key**. Cópiala (empieza con `xkeysib-`): es
-   `BREVO_API_KEY`. Brevo la muestra una sola vez.
+**a) La clave secreta.** En esta PC, en la carpeta del proyecto, ejecuta:
 
-> Con un Gmail como remitente algunos correos pueden caer en **no deseado**. Si el negocio tiene dominio propio,
-> autentícalo en Brevo (**Domains**) y usa un correo de ese dominio.
+```bash
+php -r "echo bin2hex(random_bytes(24));"
+```
+
+Copia el resultado (48 letras y números): es `GMAIL_SCRIPT_SECRETO`. Sirve para que nadie más pueda usar tu script.
+
+**b) Crear el script** (con la cuenta de Gmail desde la que saldrán los correos):
+
+1. Entra a <https://script.google.com> → **Nuevo proyecto**. Arriba, cambia "Proyecto sin título" por
+   `Correo Primos Ramírez`.
+2. Borra todo lo que hay en `Código.gs` y pega esto:
+
+   ```javascript
+   // Envía el correo de "¿Olvidaste tu contraseña?" del sistema Los Primos Ramírez desde esta cuenta de Gmail.
+   function doPost(e) {
+     try {
+       var datos = JSON.parse(e.postData.contents);
+       var secreto = PropertiesService.getScriptProperties().getProperty('SECRETO');
+       if (!secreto || datos.secreto !== secreto) {
+         return responder({ ok: false, error: 'Clave secreta incorrecta' });
+       }
+       MailApp.sendEmail({ to: datos.para, subject: datos.asunto, htmlBody: datos.html, body: datos.texto, name: datos.nombre });
+       return responder({ ok: true });
+     } catch (error) {
+       return responder({ ok: false, error: String(error) });
+     }
+   }
+
+   function responder(respuesta) {
+     return ContentService.createTextOutput(JSON.stringify(respuesta)).setMimeType(ContentService.MimeType.JSON);
+   }
+
+   // Ejecútala una vez desde el editor para dar el permiso de enviar correos y recibir uno de prueba.
+   function probar() {
+     MailApp.sendEmail(Session.getActiveUser().getEmail(), 'Prueba Los Primos Ramírez', 'El script ya puede enviar correos.');
+   }
+   ```
+
+3. Pulsa el ícono de **guardar** (disquete).
+4. Arriba, en la lista de funciones, elige **probar** y pulsa **Ejecutar**. Google pide permiso:
+   **Revisar permisos** → elige tu cuenta → si sale "Google no verificó esta app", pulsa **Configuración avanzada** →
+   **Ir a Correo Primos Ramírez (no seguro)** → **Permitir**. Es tu propio script, por eso Google no lo conoce.
+   Te debe llegar el correo "Prueba Los Primos Ramírez".
+5. A la izquierda, el engranaje **Configuración del proyecto** → abajo, **Propiedades de la secuencia de comandos** →
+   **Agregar propiedad**: nombre `SECRETO`, valor la clave del punto a) → **Guardar propiedades**.
+6. Arriba a la derecha: **Implementar** → **Nueva implementación** → en el engranaje de "Seleccionar tipo" elige
+   **Aplicación web**. Llena: descripción `Correo`, **Ejecutar como: Yo**, **Quién tiene acceso: Cualquier usuario**
+   → **Implementar**.
+7. Copia la **URL de la aplicación web** (termina en `/exec`): es `GMAIL_SCRIPT_URL`.
+
+> "Cualquier usuario" es necesario para que Render pueda llamarlo; sin la clave secreta el script no envía nada.
+> Si después cambias el código del script, usa **Implementar** → **Gestionar implementaciones** → lápiz →
+> **Versión: nueva versión** → **Implementar**, así la URL sigue siendo la misma.
 
 ---
 
@@ -192,8 +240,8 @@ pero la pantalla de recuperar contraseña le pide a la persona que el Dueño se 
    | `AWS_URL` | Paso 2.3 (termina en `/public/fotos`) |
    | `ADMIN_EMAIL` | Paso 3.2 |
    | `ADMIN_PASSWORD` | Paso 3.2 |
-   | `BREVO_API_KEY` | Paso 3.3 |
-   | `MAIL_FROM_ADDRESS` | Paso 3.3 |
+   | `GMAIL_SCRIPT_URL` | Paso 3.3 |
+   | `GMAIL_SCRIPT_SECRETO` | Paso 3.3 |
 
    > **Nota sobre `APP_URL`:** Render arma la dirección con el nombre del servicio: `https://primos-ramirez.onrender.com`.
    > Si ese nombre ya lo tiene otra persona, Render agrega letras al final (ej. `primos-ramirez-x7k2.onrender.com`).
@@ -271,7 +319,7 @@ El motivo casi siempre está en Render → servicio → **Logs**. Busca la prime
 | Página **419 Page Expired** al entrar | La página de login quedó abierta mucho tiempo, o el servicio se durmió y despertó | Recarga el login y vuelve a entrar; si se repite, busca en **Logs** un error de base de datos |
 | La foto se sube pero no se ve | Bucket `fotos` sin *Public* o `AWS_URL` mal escrita | Marca el bucket como público; revisa que `AWS_URL` termine en `/object/public/fotos` |
 | Error al subir una foto o al crear un respaldo (`SignatureDoesNotMatch`, `InvalidAccessKeyId`) | Claves S3 o región mal copiadas | Revisa `AWS_*`; si dudas, crea una clave nueva en Supabase |
-| "No se pudo enviar el correo" al recuperar la contraseña | `BREVO_API_KEY` mal copiada, o `MAIL_FROM_ADDRESS` distinto del remitente confirmado en Brevo | Revisa ambos; en Brevo → **Transactional** → **Logs** se ve si el correo salió |
+| "No se pudo enviar el correo" al recuperar la contraseña | En **Logs** busca `Apps Script de Gmail:`. `Clave secreta incorrecta`: `GMAIL_SCRIPT_SECRETO` no es igual a la propiedad `SECRETO` del script. `respuesta inesperada`: la URL está mal o la implementación no tiene acceso para "Cualquier usuario" | Corrige el valor en Render o vuelve a implementar el script (paso 3.3). En el script → **Ejecuciones** se ve cada intento |
 | El despliegue falla antes de llegar a `Running migrations` | Error al construir la imagen | Copia las últimas 30 líneas del log de construcción y pide ayuda con ellas |
 
 Para cambiar una variable: servicio → **Environment** → edita → **Save, rebuild, and deploy**.
@@ -301,8 +349,9 @@ Para cambiar una variable: servicio → **Environment** → edita → **Save, re
 - **El disco de Render se borra en cada reinicio.** Por eso las fotos y los respaldos van a Supabase. Los archivos
   que subas para restaurar solo duran hasta que confirmes la restauración.
 - **Correo de recuperar contraseña.** Si el servicio ya existía antes de este cambio, agrega a mano en **Environment**
-  `MAIL_MAILER` = `brevo`, `BREVO_API_KEY`, `MAIL_FROM_ADDRESS` y `MAIL_FROM_NAME` = `Los Primos Ramírez` (paso 3.3) y
-  guarda con **Save, rebuild, and deploy**. En la PC el correo no se envía: queda escrito en `storage/logs/laravel.log`
+  `MAIL_MAILER` = `gmail`, `GMAIL_SCRIPT_URL`, `GMAIL_SCRIPT_SECRETO` y `MAIL_FROM_NAME` = `Los Primos Ramírez`
+  (paso 3.3) y guarda con **Save, rebuild, and deploy**. Si antes tenías Brevo, borra `BREVO_API_KEY` y
+  `MAIL_FROM_ADDRESS`: ya no se usan. En la PC el correo no se envía: queda escrito en `storage/logs/laravel.log`
   (`MAIL_MAILER=log`), y ahí aparece el enlace para probar.
 
 ---
